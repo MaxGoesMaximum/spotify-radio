@@ -1,7 +1,7 @@
 // Service Worker for Spotify Radio PWA
 // Versioned caching with strategy-based fetching
 
-const CACHE_VERSION = "v2";
+const CACHE_VERSION = "v3";
 const STATIC_CACHE = `spotify-radio-static-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `spotify-radio-runtime-${CACHE_VERSION}`;
 
@@ -51,11 +51,7 @@ self.addEventListener("fetch", (event) => {
   if (url.hostname === "sdk.scdn.co") return;
 
   // Spotify CDN images — stale-while-revalidate
-  if (
-    url.hostname === "i.scdn.co" ||
-    url.hostname === "mosaic.scdn.co" ||
-    url.hostname === "image-cdn-ak.spotifycdn.com"
-  ) {
+  if (url.hostname.endsWith(".scdn.co") || url.hostname.endsWith(".spotifycdn.com")) {
     event.respondWith(staleWhileRevalidate(event.request));
     return;
   }
