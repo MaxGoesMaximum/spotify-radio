@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { signSession } from "@/lib/session";
 
+export const dynamic = "force-dynamic";
+
 function getBaseUrl(request: NextRequest): string {
   if (process.env.NEXT_PUBLIC_BASE_URL) return process.env.NEXT_PUBLIC_BASE_URL;
   if (process.env.NEXTAUTH_URL) return process.env.NEXTAUTH_URL;

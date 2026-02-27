@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 
+export const dynamic = "force-dynamic";
+
 function getBaseUrl(request: NextRequest): string {
   // Use NEXTAUTH_URL or NEXT_PUBLIC_BASE_URL env var for production
   if (process.env.NEXT_PUBLIC_BASE_URL) return process.env.NEXT_PUBLIC_BASE_URL;
