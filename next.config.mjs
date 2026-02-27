@@ -55,7 +55,23 @@ const nextConfig = {
           },
           {
             key: "Content-Security-Policy",
-            value: `default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' https://sdk.scdn.co; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://i.scdn.co https://mosaic.scdn.co https://image-cdn-ak.spotifycdn.com; connect-src ${connectSrc}; frame-src 'self' https://sdk.scdn.co;`
+            value: [
+              "default-src 'self'",
+              // Spotify SDK requires unsafe-eval; Next.js/Framer Motion need unsafe-inline
+              // TODO: migrate to nonce-based CSP when Next.js adds full support
+              "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://sdk.scdn.co",
+              "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+              "font-src 'self' https://fonts.gstatic.com",
+              "img-src 'self' data: blob: https://i.scdn.co https://mosaic.scdn.co https://image-cdn-ak.spotifycdn.com",
+              `connect-src ${connectSrc}`,
+              "frame-src 'self' https://sdk.scdn.co",
+              "media-src 'self' blob: data:",
+              "worker-src 'self' blob:",
+              "base-uri 'self'",
+              "form-action 'self'",
+              "frame-ancestors 'none'",
+              "upgrade-insecure-requests",
+            ].join("; "),
           }
         ],
       },

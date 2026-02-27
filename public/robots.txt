@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /radio
+Disallow: /profile
+Disallow: /stats
+Disallow: /social
+Disallow: /explore
+
+Sitemap: https://spotifyradio.app/sitemap.xml

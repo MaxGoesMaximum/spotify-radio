@@ -53,6 +53,7 @@ import { NavigationBar } from "@/components/ui/NavigationBar";
 import { ToastContainer } from "@/components/ui/ToastContainer";
 import { CookieConsent } from "@/components/ui/CookieConsent";
 import { KeyboardShortcutsOverlay } from "@/components/ui/KeyboardShortcutsOverlay";
+import { WebVitals } from "@/components/providers/WebVitals";
 
 export default function RootLayout({
   children,
@@ -63,9 +64,18 @@ export default function RootLayout({
     <html lang="nl" className={`${inter.variable} ${spaceGrotesk.variable} ${jetbrains.variable}`}>
       <body className="min-h-[100dvh] bg-radio-bg font-display antialiased overflow-x-hidden selection:bg-white/20 selection:text-white">
         <Providers>
+          <WebVitals />
           <ServiceWorkerRegister />
-          {/* Background effects */}
-          {children}
+          {/* Skip to main content — accessibility */}
+          <a
+            href="#main-content"
+            className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[9999] focus:px-4 focus:py-2 focus:rounded-lg focus:bg-white focus:text-black focus:text-sm focus:font-medium focus:shadow-lg"
+          >
+            Skip to content
+          </a>
+          <main id="main-content">
+            {children}
+          </main>
           <NavigationBar />
           <ToastContainer />
           <CookieConsent />

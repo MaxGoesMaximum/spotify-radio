@@ -30,6 +30,11 @@ next-env.d.ts
 *.log
 npm-debug.log*
 
+# Testing
+/coverage
+/playwright-report
+/test-results
+
 # OS files
 Thumbs.db
 .DS_Store

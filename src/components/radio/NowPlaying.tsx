@@ -94,6 +94,9 @@ export function NowPlaying({ accessToken }: NowPlayingProps) {
         exit={{ opacity: 0, x: -20 }}
         transition={{ duration: 0.35, ease: [0.4, 0, 0.2, 1] }}
         className="text-center lg:text-left space-y-2.5"
+        role="status"
+        aria-live="polite"
+        aria-label={`Now playing: ${currentTrack.name} by ${currentTrack.artists.map((a) => a.name).join(", ")}`}
       >
         {/* Station tag + status */}
         <div className="flex items-center justify-center lg:justify-start gap-2">
