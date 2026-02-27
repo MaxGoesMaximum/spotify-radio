@@ -201,20 +201,92 @@ export default function StatsPage() {
                             </motion.div>
                         )}
 
-                        {/* Activity Card */}
-                        <motion.div variants={fadeUp} className="rounded-2xl border border-white/[0.06] p-6 bg-[#111113]">
-                            <h3 className="text-white/80 text-sm font-semibold mb-4 uppercase tracking-wider">Activiteit</h3>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="text-center p-4 rounded-xl bg-white/[0.02] border border-white/[0.04]">
-                                    <p className="text-2xl font-bold text-radio-accent">{stats.activeDaysLast30}</p>
-                                    <p className="text-white/30 text-[10px] mt-1 uppercase tracking-wider">Actieve dagen (30d)</p>
+                        {/* Genre Pie Chart + Activity */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {/* Donut Chart */}
+                            {stats.topGenres.length > 0 && (
+                                <motion.div variants={fadeUp} className="rounded-2xl border border-white/[0.06] p-6 bg-[#111113]">
+                                    <h3 className="text-white/80 text-sm font-semibold mb-5 uppercase tracking-wider">Genre Verdeling</h3>
+                                    <div className="flex items-center gap-6">
+                                        <svg viewBox="0 0 120 120" className="w-32 h-32 shrink-0 -rotate-90">
+                                            {(() => {
+                                                const total = stats.topGenres.reduce((sum, g) => sum + g.count, 0);
+                                                let offset = 0;
+                                                return stats.topGenres.slice(0, 6).map((g) => {
+                                                    const pct = (g.count / total) * 100;
+                                                    const dash = (pct * 314.16) / 100;
+                                                    const gap = 314.16 - dash;
+                                                    const strokeOffset = (offset * 314.16) / 100;
+                                                    offset += pct;
+                                                    return (
+                                                        <motion.circle
+                                                            key={g.genre}
+                                                            cx="60" cy="60" r="50"
+                                                            fill="none"
+                                                            stroke={getGenreColor(g.genre)}
+                                                            strokeWidth="16"
+                                                            strokeDasharray={`${dash} ${gap}`}
+                                                            strokeDashoffset={-strokeOffset}
+                                                            initial={{ opacity: 0 }}
+                                                            animate={{ opacity: 1 }}
+                                                            transition={{ delay: 0.5, duration: 0.8 }}
+                                                            strokeLinecap="round"
+                                                        />
+                                                    );
+                                                });
+                                            })()}
+                                            <text x="60" y="60" textAnchor="middle" dominantBaseline="central" fill="white" fontSize="16" fontWeight="bold" className="rotate-90 origin-center">
+                                                {stats.topGenres.length}
+                                            </text>
+                                        </svg>
+                                        <div className="space-y-1.5 min-w-0">
+                                            {stats.topGenres.slice(0, 6).map((g) => {
+                                                const total = stats.topGenres.reduce((s, x) => s + x.count, 0);
+                                                return (
+                                                    <div key={g.genre} className="flex items-center gap-2">
+                                                        <div className="w-2 h-2 rounded-full shrink-0" style={{ background: getGenreColor(g.genre) }} />
+                                                        <span className="text-white/60 text-xs capitalize truncate">{g.genre}</span>
+                                                        <span className="text-white/20 text-[10px] ml-auto tabular-nums">{Math.round((g.count / total) * 100)}%</span>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                </motion.div>
+                            )}
+
+                            {/* Activity + Streak Card */}
+                            <motion.div variants={fadeUp} className="rounded-2xl border border-white/[0.06] p-6 bg-[#111113] flex flex-col gap-4">
+                                <h3 className="text-white/80 text-sm font-semibold uppercase tracking-wider">Activiteit</h3>
+
+                                {/* Streak Fire */}
+                                <div className="flex items-center gap-4 p-4 rounded-xl bg-gradient-to-r from-orange-500/5 to-red-500/5 border border-orange-500/10">
+                                    <div className="text-3xl">🔥</div>
+                                    <div>
+                                        <p className="text-2xl font-bold text-orange-400">{stats.listeningStreak} dagen</p>
+                                        <p className="text-white/30 text-[11px]">Luisterstreak — blijf luisteren!</p>
+                                    </div>
                                 </div>
-                                <div className="text-center p-4 rounded-xl bg-white/[0.02] border border-white/[0.04]">
-                                    <p className="text-2xl font-bold text-white">{stats.totalMinutes.toLocaleString("nl-NL")}</p>
-                                    <p className="text-white/30 text-[10px] mt-1 uppercase tracking-wider">Totale minuten</p>
+
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="text-center p-3 rounded-xl bg-white/[0.02] border border-white/[0.04]">
+                                        <p className="text-xl font-bold text-radio-accent">{stats.activeDaysLast30}</p>
+                                        <p className="text-white/30 text-[10px] mt-1 uppercase tracking-wider">Actief (30d)</p>
+                                    </div>
+                                    <div className="text-center p-3 rounded-xl bg-white/[0.02] border border-white/[0.04]">
+                                        <p className="text-xl font-bold text-white">{stats.totalMinutes.toLocaleString("nl-NL")}</p>
+                                        <p className="text-white/30 text-[10px] mt-1 uppercase tracking-wider">Minuten</p>
+                                    </div>
                                 </div>
-                            </div>
-                        </motion.div>
+
+                                {stats.memberSince && (
+                                    <div className="flex items-center gap-2 text-white/20 text-xs mt-auto">
+                                        <span>📅</span>
+                                        <span>Lid sinds {new Date(stats.memberSince).toLocaleDateString("nl-NL", { year: "numeric", month: "long" })}</span>
+                                    </div>
+                                )}
+                            </motion.div>
+                        </div>
                     </motion.div>
                 ) : (
                     <div className="text-center py-20">

@@ -29,6 +29,8 @@ import { EQPresets } from "./EQPresets";
 import { SessionStats } from "./SessionStats";
 import { QueuePreview } from "./QueuePreview";
 import { SongProgressBar } from "./SongProgressBar";
+import { SongReactions } from "./SongReactions";
+import { FullscreenPlayer } from "./FullscreenPlayer";
 import { pausePlayback, resumePlayback } from "@/services/spotify-api";
 import { getStationColor } from "@/config/stations";
 
@@ -235,6 +237,9 @@ export function RadioPlayer({ accessToken }: RadioPlayerProps) {
           {/* ═══ Song Progress Bar ═══ */}
           <SongProgressBar />
 
+          {/* ═══ Song Reactions ═══ */}
+          <SongReactions />
+
           {/* ═══ Transport Controls ═══ */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
@@ -291,6 +296,9 @@ export function RadioPlayer({ accessToken }: RadioPlayerProps) {
 
             {/* Divider */}
             <div className="w-px h-8 bg-white/[0.06] hidden sm:block" />
+
+            {/* Fullscreen */}
+            <FullscreenPlayer />
 
             {/* Volume */}
             <VolumeKnob />
