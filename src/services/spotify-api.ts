@@ -63,19 +63,31 @@ export async function playTrack(
   deviceId: string,
   trackUri: string
 ): Promise<boolean> {
-  const response = await fetch(
-    `${SPOTIFY_API}/me/player/play?device_id=${deviceId}`,
-    {
-      method: "PUT",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ uris: [trackUri] }),
-    }
-  );
+  const maxRetries = 3;
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    const response = await fetch(
+      `${SPOTIFY_API}/me/player/play?device_id=${deviceId}`,
+      {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ uris: [trackUri] }),
+      }
+    );
 
-  return response.ok || response.status === 204;
+    if (response.ok || response.status === 204) return true;
+
+    // If we hit 404 Not Found, wait and retry. Spotify backend takes ~1s to sync new devices.
+    if (response.status === 404 && attempt < maxRetries) {
+      console.warn(`Spotify 404 on playTrack (attempt ${attempt}). Retrying...`);
+      await new Promise(r => setTimeout(r, 1000));
+      continue;
+    }
+    return false;
+  }
+  return false;
 }
 
 export async function setVolume(
@@ -105,10 +117,19 @@ export async function resumePlayback(
   accessToken: string,
   deviceId: string
 ): Promise<void> {
-  await fetch(`${SPOTIFY_API}/me/player/play?device_id=${deviceId}`, {
-    method: "PUT",
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
+  const maxRetries = 2;
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    const response = await fetch(`${SPOTIFY_API}/me/player/play?device_id=${deviceId}`, {
+      method: "PUT",
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    if (response.ok || response.status === 204) return;
+    if (response.status === 404 && attempt < maxRetries) {
+      await new Promise(r => setTimeout(r, 1000));
+      continue;
+    }
+    return;
+  }
 }
 
 export async function saveTrack(

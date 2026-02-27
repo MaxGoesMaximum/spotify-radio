@@ -116,10 +116,17 @@ export function useRadioEngine(accessToken: string | undefined) {
         }).catch(() => { });
       }
 
+      // Fetch live deviceId in case it changed due to a reconnect during TTS
+      const activeDeviceId = useRadioStore.getState().deviceId;
+      if (!activeDeviceId) {
+        isProcessingRef.current = false;
+        return;
+      }
+
       // Play the next track
       const success = await playTrack(
         accessToken,
-        store.deviceId,
+        activeDeviceId,
         nextTrack.uri
       );
       if (success) {
@@ -184,10 +191,22 @@ export function useRadioEngine(accessToken: string | undefined) {
         getSongsUntilAnnouncement(store.currentGenre)
       );
 
-      await playTrack(accessToken, store.deviceId, firstTrack.uri);
-      store.setCurrentTrack(firstTrack);
-      store.setPlaying(true);
-      store.incrementSessionTrackCount();
+      // IMPORTANT: fetch the absolute latest device_id from State because the
+      // player might have re-initialized asynchronously while we were speaking!
+      const activeDeviceId = useRadioStore.getState().deviceId;
+      if (!activeDeviceId) return;
+
+      const success = await playTrack(accessToken, activeDeviceId, firstTrack.uri);
+
+      if (success) {
+        store.setCurrentTrack(firstTrack);
+        store.setPlaying(true);
+        store.incrementSessionTrackCount();
+      } else {
+        console.error("Critical: Initial Spotify playback failed. 404 Race Condition?");
+        store.setLoading(false);
+        hasStartedRef.current = false; // Allow manual retry by unsetting the lock
+      }
     }
 
     store.setLoading(false);
