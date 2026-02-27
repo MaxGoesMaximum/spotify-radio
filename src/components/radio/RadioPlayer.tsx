@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRadioStore } from "@/store/radio-store";
 import { useSpotifyPlayer } from "@/hooks/useSpotifyPlayer";
@@ -31,6 +31,7 @@ import { QueuePreview } from "./QueuePreview";
 import { SongProgressBar } from "./SongProgressBar";
 import { SongReactions } from "./SongReactions";
 import { FullscreenPlayer } from "./FullscreenPlayer";
+import { VisualizerStyleSelector } from "./VisualizerStyleSelector";
 import { pausePlayback, resumePlayback } from "@/services/spotify-api";
 import { getStationColor } from "@/config/stations";
 
@@ -47,7 +48,21 @@ export function RadioPlayer({ accessToken }: RadioPlayerProps) {
   const currentGenre = useRadioStore((s) => s.currentGenre);
   const partyMode = useRadioStore((s) => s.partyMode);
 
-  const genreColor = getStationColor(currentGenre);
+  const [genreColor, setGenreColor] = useState(getStationColor(currentGenre));
+
+  useEffect(() => {
+    setGenreColor(getStationColor(currentGenre));
+
+    const handleColorChange = (e: Event) => {
+      const { genre, color } = (e as CustomEvent).detail;
+      if (genre === currentGenre || genre === "all") {
+        setGenreColor(color);
+      }
+    };
+
+    window.addEventListener("stationColorChange", handleColorChange);
+    return () => window.removeEventListener("stationColorChange", handleColorChange);
+  }, [currentGenre]);
 
   const { setOnTrackEnd } = useSpotifyPlayer(accessToken);
   const { startRadio, playNextTrack, skipTrack, changeGenre } =
@@ -283,11 +298,12 @@ export function RadioPlayer({ accessToken }: RadioPlayerProps) {
             {/* Skip */}
             <motion.button
               onClick={skipTrack}
-              whileHover={{ scale: 1.08 }}
-              whileTap={{ scale: 0.92 }}
-              className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-white/[0.05] flex items-center justify-center hover:bg-white/[0.1] transition-all border border-white/[0.06] hover:border-white/[0.1] group"
-              aria-label="Volgend nummer"
-              title="Volgend nummer (N)"
+              disabled={isLoading || !isPlaying}
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              className="p-3 sm:p-4 rounded-full text-white/50 hover:text-white/90 hover:bg-white/[0.08] disabled:opacity-30 transition-all border border-transparent hover:border-white/[0.05]"
+              aria-label="Volgend nummer (Sneltoets: Pijltje Rechts)"
+              title="Volgend nummer (Sneltoets: →)"
             >
               <svg className="w-5 h-5 text-white/50 group-hover:text-white/80 transition-colors" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M6 18l8.5-6L6 6v12zm2 0V6l6.5 6L8 18zm8-12v12h2V6h-2z" />
@@ -296,6 +312,9 @@ export function RadioPlayer({ accessToken }: RadioPlayerProps) {
 
             {/* Divider */}
             <div className="w-px h-8 bg-white/[0.06] hidden sm:block" />
+
+            {/* Visualizer Style */}
+            <VisualizerStyleSelector />
 
             {/* Fullscreen */}
             <FullscreenPlayer />

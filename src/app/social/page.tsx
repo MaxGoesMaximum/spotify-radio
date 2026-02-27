@@ -16,6 +16,11 @@ interface ActivityEntry {
     minutesAgo: number;
 }
 
+interface TopStation {
+    station: string;
+    count: number;
+}
+
 function getStationMeta(stationName: string) {
     const s = STATIONS.find(
         (st) => st.label.toLowerCase() === stationName.toLowerCase() || st.id === stationName.toLowerCase()
@@ -27,6 +32,7 @@ export default function SocialPage() {
     const { session, status } = useSpotifySession();
     const router = useRouter();
     const [activities, setActivities] = useState<ActivityEntry[]>([]);
+    const [topStations, setTopStations] = useState<TopStation[]>([]);
     const [onlineCount, setOnlineCount] = useState(0);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -42,6 +48,7 @@ export default function SocialPage() {
             const data = await res.json();
             setActivities(data.activity || []);
             setOnlineCount(data.onlineCount || 0);
+            setTopStations(data.topStations || []);
             setError(null);
         } catch {
             setError("Kon activiteit niet laden");
@@ -121,6 +128,40 @@ export default function SocialPage() {
                         </svg>
                     </button>
                 </motion.div>
+
+                {/* Station Leaderboard */}
+                {!isLoading && topStations.length > 0 && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="mb-8 p-6 rounded-2xl bg-[#111113] border border-white/[0.06]"
+                    >
+                        <h2 className="text-white/80 text-sm font-semibold mb-4 uppercase tracking-wider flex items-center gap-2">
+                            <span>🏆</span> Populairste Zenders
+                        </h2>
+                        <div className="flex flex-wrap gap-2">
+                            {topStations.map((s, i) => {
+                                const meta = getStationMeta(s.station);
+                                return (
+                                    <div
+                                        key={s.station}
+                                        className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium border"
+                                        style={{
+                                            color: meta.color,
+                                            borderColor: `${meta.color}30`,
+                                            backgroundColor: `${meta.color}10`,
+                                        }}
+                                        title={`${s.count} luistersessies deze week`}
+                                    >
+                                        <span className="opacity-60 tabular-nums">#{i + 1}</span>
+                                        <span>{meta.icon}</span>
+                                        <span className="capitalize">{meta.name}</span>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </motion.div>
+                )}
 
                 {/* Error */}
                 {error && (

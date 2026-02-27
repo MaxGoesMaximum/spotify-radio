@@ -141,18 +141,39 @@ body {
 
 /* ═══ Equalizer Animations ═══ */
 @keyframes eq-bar-1 {
-  0%, 100% { height: 20%; }
-  50% { height: 80%; }
+
+  0%,
+  100% {
+    height: 20%;
+  }
+
+  50% {
+    height: 80%;
+  }
 }
 
 @keyframes eq-bar-2 {
-  0%, 100% { height: 50%; }
-  50% { height: 30%; }
+
+  0%,
+  100% {
+    height: 50%;
+  }
+
+  50% {
+    height: 30%;
+  }
 }
 
 @keyframes eq-bar-3 {
-  0%, 100% { height: 30%; }
-  50% { height: 90%; }
+
+  0%,
+  100% {
+    height: 30%;
+  }
+
+  50% {
+    height: 90%;
+  }
 }
 
 /* ═══ Selection Color ═══ */
@@ -174,7 +195,10 @@ button:focus:not(:focus-visible) {
 
 /* ═══ Reduced Motion ═══ */
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
+
+  *,
+  *::before,
+  *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
@@ -183,10 +207,23 @@ button:focus:not(:focus-visible) {
 
 /* ═══ Ambient Background Drift ═══ */
 @keyframes ambient-drift {
-  0%, 100% { transform: translate(0%, 0%) scale(1); }
-  25% { transform: translate(2%, -3%) scale(1.02); }
-  50% { transform: translate(-1%, 2%) scale(0.98); }
-  75% { transform: translate(-3%, -1%) scale(1.01); }
+
+  0%,
+  100% {
+    transform: translate(0%, 0%) scale(1);
+  }
+
+  25% {
+    transform: translate(2%, -3%) scale(1.02);
+  }
+
+  50% {
+    transform: translate(-1%, 2%) scale(0.98);
+  }
+
+  75% {
+    transform: translate(-3%, -1%) scale(1.01);
+  }
 }
 
 .animate-ambient-drift {
@@ -195,10 +232,123 @@ button:focus:not(:focus-visible) {
 
 /* ═══ Smooth Fade In ═══ */
 @keyframes fade-in {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .animate-fade-in {
   animation: fade-in 0.6s ease-out forwards;
+}
+
+/* ═══ Light Theme ═══ */
+[data-theme="light"] {
+  --theme-bg: #f5f5f7;
+  --theme-surface: #ffffff;
+  --theme-border: rgba(0, 0, 0, 0.08);
+  --theme-text-primary: #1d1d1f;
+  --theme-text-secondary: rgba(0, 0, 0, 0.55);
+  --theme-text-dim: rgba(0, 0, 0, 0.3);
+  --theme-accent: #0A84FF;
+  --theme-glow: #0A84FF;
+  --theme-glass-opacity: 0.65;
+  --theme-border-opacity: 0.12;
+  --theme-glow-intensity: 0.3;
+}
+
+[data-theme="light"] body {
+  color: #1d1d1f;
+  background: #f5f5f7;
+}
+
+[data-theme="light"] ::selection {
+  background: rgba(10, 132, 255, 0.2);
+  color: #1d1d1f;
+}
+
+[data-theme="light"] ::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="light"] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+/* Light theme overrides for common patterns */
+[data-theme="light"] .bg-radio-bg {
+  background: #f5f5f7;
+}
+
+[data-theme="light"] .bg-black {
+  background: #f5f5f7;
+}
+
+[data-theme="light"] .bg-\[#111113\] {
+  background: #ffffff;
+}
+
+[data-theme="light"] .bg-\[#1a1a1c\] {
+  background: #ffffff;
+}
+
+[data-theme="light"] .text-white {
+  color: #1d1d1f;
+}
+
+[data-theme="light"] .text-white\/80 {
+  color: rgba(0, 0, 0, 0.7);
+}
+
+[data-theme="light"] .text-white\/70 {
+  color: rgba(0, 0, 0, 0.6);
+}
+
+[data-theme="light"] .text-white\/60 {
+  color: rgba(0, 0, 0, 0.55);
+}
+
+[data-theme="light"] .text-white\/50 {
+  color: rgba(0, 0, 0, 0.45);
+}
+
+[data-theme="light"] .text-white\/40 {
+  color: rgba(0, 0, 0, 0.35);
+}
+
+[data-theme="light"] .text-white\/30 {
+  color: rgba(0, 0, 0, 0.25);
+}
+
+[data-theme="light"] .text-white\/20 {
+  color: rgba(0, 0, 0, 0.15);
+}
+
+[data-theme="light"] .border-white\/\[0\.06\] {
+  border-color: rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="light"] .border-white\/\[0\.08\] {
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="light"] .bg-white\/\[0\.03\] {
+  background: rgba(0, 0, 0, 0.02);
+}
+
+[data-theme="light"] .bg-white\/\[0\.04\] {
+  background: rgba(0, 0, 0, 0.03);
+}
+
+[data-theme="light"] .bg-white\/\[0\.05\] {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+[data-theme="light"] .bg-white\/\[0\.06\] {
+  background: rgba(0, 0, 0, 0.05);
 }

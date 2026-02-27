@@ -24,6 +24,7 @@ export async function GET(request: NextRequest) {
     topArtists,
     recentDays,
     memberSince,
+    topTracks,
   ] = await Promise.all([
     // Total tracks played
     prisma.listeningHistory.count({ where: { userId } }),
@@ -70,6 +71,15 @@ export async function GET(request: NextRequest) {
       where: { id: userId },
       select: { createdAt: true },
     }),
+
+    // Top tracks (by play count)
+    prisma.listeningHistory.groupBy({
+      by: ["trackId", "trackName", "artistName", "albumImage"],
+      where: { userId },
+      _count: { trackId: true },
+      orderBy: { _count: { trackId: "desc" } },
+      take: 10,
+    }),
   ]);
 
   // Calculate listening streak
@@ -106,6 +116,13 @@ export async function GET(request: NextRequest) {
       topArtists: topArtists.map((a) => ({
         artist: a.artistName,
         count: a._count.artistName,
+      })),
+      topTracks: topTracks.map((t) => ({
+        id: t.trackId,
+        title: t.trackName,
+        artist: t.artistName,
+        albumArt: t.albumImage,
+        count: t._count.trackId,
       })),
       listeningStreak: streak,
       activeDaysLast30: uniqueDays.size,

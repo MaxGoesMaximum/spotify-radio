@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, JetBrains_Mono, Space_Grotesk } from "next/font/google";
 import { Providers } from "@/components/providers/Providers";
+import { ServiceWorkerRegister } from "@/components/providers/ServiceWorkerRegister";
 import "./globals.css";
 
 const inter = Inter({
@@ -62,6 +63,8 @@ export default function RootLayout({
     <html lang="nl" className={`${inter.variable} ${spaceGrotesk.variable} ${jetbrains.variable}`}>
       <body className="min-h-[100dvh] bg-radio-bg font-display antialiased overflow-x-hidden selection:bg-white/20 selection:text-white">
         <Providers>
+          <ServiceWorkerRegister />
+          {/* Background effects */}
           {children}
           <NavigationBar />
           <ToastContainer />

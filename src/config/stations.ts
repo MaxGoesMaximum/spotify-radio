@@ -453,8 +453,24 @@ export function getStation(id: StationId): StationConfig {
   return STATIONS.find((s) => s.id === id) || STATIONS[0];
 }
 
-export function getStationColor(id: StationId): string {
-  return getStation(id).color;
+export function getStationColor(stationId: string): string {
+  if (typeof window !== "undefined") {
+    try {
+      const customColors = JSON.parse(localStorage.getItem("sr_custom_colors") || "{}");
+      if (customColors[stationId]) {
+        return customColors[stationId];
+      }
+    } catch (e) {
+      // fallback to default if parsing fails
+    }
+  }
+
+  const s = STATIONS.find(
+    (st) =>
+      st.id === stationId.toLowerCase() ||
+      st.label.toLowerCase() === stationId.toLowerCase()
+  );
+  return s?.color || "#b3b3b3";
 }
 
 export function getCurrentShow(station: StationConfig): StationShow {

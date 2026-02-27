@@ -47,6 +47,16 @@ export async function GET(request: NextRequest) {
             where: { playedAt: { gte: thirtyMinAgo } },
         });
 
+        // Get Top Stations Leaderboard (Global, last 7 days)
+        const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+        const topStationsGlobal = await prisma.listeningHistory.groupBy({
+            by: ["genre"],
+            where: { playedAt: { gte: sevenDaysAgo } },
+            _count: { genre: true },
+            orderBy: { _count: { genre: "desc" } },
+            take: 5,
+        });
+
         return NextResponse.json({
             activity: recentActivity.map((entry) => ({
                 id: entry.id,
@@ -64,9 +74,13 @@ export async function GET(request: NextRequest) {
                 ),
             })),
             onlineCount: activeCount.length,
+            topStations: topStationsGlobal.map((s) => ({
+                station: s.genre,
+                count: s._count.genre,
+            })),
         });
     } catch (error) {
         console.error("Activity fetch error:", error);
-        return NextResponse.json({ activity: [], onlineCount: 0 });
+        return NextResponse.json({ activity: [], onlineCount: 0, topStations: [] });
     }
 }

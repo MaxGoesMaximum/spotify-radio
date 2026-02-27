@@ -428,6 +428,46 @@ export default function ProfilePage() {
                         }`} />
                     </button>
                   </div>
+
+                  {/* Custom Station Colors */}
+                  <div className="pt-4 mt-2 border-t border-white/[0.04]">
+                    <div className="mb-3">
+                      <p className="text-white/70 text-sm font-medium">Zender Kleuren aanpassen</p>
+                      <p className="text-white/30 text-xs">Kies je eigen kleuren voor actieve genres</p>
+                    </div>
+                    <div className="flex items-center gap-3 w-full">
+                      <select
+                        className="flex-1 bg-white/[0.05] border border-white/[0.08] rounded-lg px-3 py-1.5 text-white/70 text-sm appearance-none"
+                        onChange={(e) => {
+                          const genre = e.target.value;
+                          const picker = document.getElementById("color-picker") as HTMLInputElement;
+                          if (picker) picker.dataset.genre = genre;
+                        }}
+                      >
+                        <option value="indie">Indie</option>
+                        <option value="pop">Pop</option>
+                        <option value="hiphop">Hip Hop</option>
+                        <option value="dance">Dance</option>
+                        <option value="rock">Rock</option>
+                      </select>
+                      <input
+                        id="color-picker"
+                        type="color"
+                        defaultValue="#ff6b35"
+                        className="w-10 h-8 rounded shrink-0 cursor-pointer bg-transparent border-0 p-0"
+                        onChange={(e) => {
+                          const genre = e.target.dataset.genre || "indie";
+                          const color = e.target.value;
+                          const customColors = JSON.parse(localStorage.getItem("sr_custom_colors") || "{}");
+                          customColors[genre] = color;
+                          localStorage.setItem("sr_custom_colors", JSON.stringify(customColors));
+
+                          // Dispatch event for UI update
+                          window.dispatchEvent(new CustomEvent("stationColorChange", { detail: { genre, color } }));
+                        }}
+                      />
+                    </div>
+                  </div>
                 </div>
 
                 {/* Data & Privacy */}

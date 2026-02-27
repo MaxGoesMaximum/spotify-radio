@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { useSpotifySession } from "@/hooks/useSpotifySession";
+import { ListeningHeatmap } from "@/components/stats/ListeningHeatmap";
 
 interface StatsData {
     totalTracks: number;
@@ -12,6 +13,7 @@ interface StatsData {
     totalHours: number;
     topGenres: { genre: string; count: number }[];
     topArtists: { artist: string; count: number }[];
+    topTracks: { id: string; title: string; artist: string; albumArt: string; count: number }[];
     listeningStreak: number;
     activeDaysLast30: number;
     memberSince: string | null;
@@ -195,6 +197,41 @@ export default function StatsPage() {
                                             </div>
                                             <span className="text-white/70 text-sm truncate flex-1 group-hover:text-white transition-colors">{a.artist}</span>
                                             <span className="text-white/20 text-xs tabular-nums">{a.count}×</span>
+                                        </motion.div>
+                                    ))}
+                                </div>
+                            </motion.div>
+                        )}
+
+                        {/* Top Tracks */}
+                        {stats.topTracks?.length > 0 && (
+                            <motion.div
+                                variants={fadeUp}
+                                className="rounded-2xl border border-white/[0.06] p-6 bg-[#111113]"
+                            >
+                                <h3 className="text-white/80 text-sm font-semibold mb-5 uppercase tracking-wider">
+                                    Meest Beluisterde Nummers
+                                </h3>
+                                <div className="space-y-2">
+                                    {stats.topTracks.slice(0, 5).map((t, i) => (
+                                        <motion.div
+                                            key={t.id + i}
+                                            initial={{ opacity: 0, x: -10 }}
+                                            animate={{ opacity: 1, x: 0 }}
+                                            transition={{ delay: 0.6 + i * 0.05 }}
+                                            className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-white/[0.03] transition-colors group"
+                                        >
+                                            <span className="text-white/15 text-xs w-5 text-right font-mono tabular-nums">{i + 1}</span>
+                                            {t.albumArt ? (
+                                                <img src={t.albumArt} alt={t.title} className="w-10 h-10 rounded-md object-cover border border-white/[0.06]" />
+                                            ) : (
+                                                <div className="w-10 h-10 rounded-md bg-white/[0.04] border border-white/[0.06] flex items-center justify-center">🎵</div>
+                                            )}
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-white/80 text-sm font-medium truncate group-hover:text-white transition-colors">{t.title}</p>
+                                                <p className="text-white/40 text-xs truncate">{t.artist}</p>
+                                            </div>
+                                            <span className="text-white/20 text-xs tabular-nums">{t.count}×</span>
                                         </motion.div>
                                     ))}
                                 </div>

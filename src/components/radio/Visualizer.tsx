@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRadioStore } from "@/store/radio-store";
 import { getStationColor } from "@/config/stations";
 
@@ -27,11 +27,28 @@ export function Visualizer() {
       : `linear-gradient(to top, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.4))`;
   };
 
+  const [style, setStyle] = useState<"bars" | "wave" | "circular">("bars");
+
+  // Listen for style changes
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("sr_viz_style") as "bars" | "wave" | "circular";
+      if (saved) setStyle(saved);
+
+      const handleStyleChange = (e: Event) => {
+        const customEvent = e as CustomEvent<"bars" | "wave" | "circular">;
+        setStyle(customEvent.detail);
+      };
+      window.addEventListener("vizStyleChange", handleStyleChange);
+      return () => window.removeEventListener("vizStyleChange", handleStyleChange);
+    }
+  }, []);
+
   useEffect(() => {
     if (!isPlaying) {
       // Reset visuals to default "off" state
       for (let i = 0; i < BAR_COUNT; i++) {
-        const height = "3%";
+        const height = style === "circular" ? "10%" : "3%";
         const bg = "rgba(255,255,255,0.05)";
 
         if (glowRefs.current[i]) {
@@ -42,11 +59,17 @@ export function Visualizer() {
         if (mainRefs.current[i]) {
           mainRefs.current[i]!.style.height = height;
           mainRefs.current[i]!.style.background = "rgba(255,255,255,0.1)";
-          mainRefs.current[i]!.style.opacity = "0.15";
-        }
-        if (reflectionRefs.current[i]) {
-          reflectionRefs.current[i]!.style.height = height;
-          reflectionRefs.current[i]!.style.background = bg;
+          if (style === "wave") {
+            mainRefs.current[i]!.style.opacity = "0.4";
+            mainRefs.current[i]!.style.width = "8px";
+          } else if (style === "circular") {
+            mainRefs.current[i]!.style.opacity = "0.15";
+            mainRefs.current[i]!.style.transform = `rotate(${(i / BAR_COUNT) * 360}deg) translateY(-20px)`;
+          } else {
+            mainRefs.current[i]!.style.opacity = "0.15";
+            mainRefs.current[i]!.style.width = "3px";
+            mainRefs.current[i]!.style.transform = "none";
+          }
         }
       }
       return;
@@ -65,12 +88,22 @@ export function Visualizer() {
             const slow = Math.sin(time / 800 + i * 0.2) * 15;
             heightVal = Math.max(5, Math.min(70, wave + slow));
           } else {
-            const base = Math.sin(time / 400 + i * 0.25) * 30 + 45;
+            // Base calculation
+            let base = Math.sin(time / 400 + i * 0.25) * 30 + 45;
             const random = Math.random() * 25;
             const center = Math.abs(i - BAR_COUNT / 2) / (BAR_COUNT / 2);
             const centerBoost = (1 - center) * 25;
-            const lowEnd = i < BAR_COUNT * 0.3 ? Math.random() * 15 : 0;
+
+            // Add low end punch
+            const lowEnd = i < BAR_COUNT * 0.3 ? Math.random() * 20 : 0;
             heightVal = Math.max(5, Math.min(98, base + random + centerBoost + lowEnd));
+
+            // Style-specific adjustments
+            if (style === "wave") {
+              heightVal = Math.sin(time / 300 + i * 0.3) * 40 + 50 + (Math.random() * 10);
+            } else if (style === "circular") {
+              heightVal = Math.max(10, Math.min(100, (base + random) * 0.8));
+            }
           }
 
           const heightStr = `${heightVal}%`;
@@ -80,21 +113,42 @@ export function Visualizer() {
           if (glowRefs.current[i]) {
             glowRefs.current[i]!.style.height = heightStr;
             glowRefs.current[i]!.style.background = activeColor;
-            glowRefs.current[i]!.style.opacity = "0.35";
+            glowRefs.current[i]!.style.opacity = style === "circular" ? "0.1" : "0.35";
           }
 
           // Update Main
           if (mainRefs.current[i]) {
             mainRefs.current[i]!.style.height = heightStr;
             mainRefs.current[i]!.style.background = activeColor;
-            mainRefs.current[i]!.style.opacity = "0.9";
+            mainRefs.current[i]!.style.opacity = style === "wave" ? "0.6" : "0.9";
+
+            if (style === "wave") {
+              mainRefs.current[i]!.style.width = "8px"; // Fatter bars for wave illusion
+              mainRefs.current[i]!.style.transform = "none";
+              mainRefs.current[i]!.style.borderRadius = "4px";
+            } else if (style === "circular") {
+              const angle = (i / BAR_COUNT) * 360;
+              mainRefs.current[i]!.style.width = "3px";
+              mainRefs.current[i]!.style.transform = `rotate(${angle}deg) translateY(-${heightVal * 0.4}px)`;
+              mainRefs.current[i]!.style.transformOrigin = "bottom center";
+            } else {
+              mainRefs.current[i]!.style.width = "3px";
+              mainRefs.current[i]!.style.transform = "none";
+              mainRefs.current[i]!.style.borderRadius = "9999px";
+            }
           }
 
-          // Update Reflection
+          // Update Reflection (only for bars/wave)
           if (reflectionRefs.current[i]) {
-            const reflectHeight = `${Math.min(heightVal, 50)}%`;
-            reflectionRefs.current[i]!.style.height = reflectHeight;
-            reflectionRefs.current[i]!.style.background = `linear-gradient(to top, rgba(255,255,255,0.25), transparent)`;
+            if (style === "circular") {
+              reflectionRefs.current[i]!.style.opacity = "0";
+            } else {
+              reflectionRefs.current[i]!.style.opacity = "0.15";
+              const reflectHeight = `${Math.min(heightVal, 50)}%`;
+              reflectionRefs.current[i]!.style.height = reflectHeight;
+              reflectionRefs.current[i]!.style.background = `linear-gradient(to top, rgba(255,255,255,0.25), transparent)`;
+              reflectionRefs.current[i]!.style.width = style === "wave" ? "8px" : "3px";
+            }
           }
         }
         lastTime = time;
