@@ -10,8 +10,9 @@ export function ServiceWorkerRegister() {
     useEffect(() => {
         if (typeof window !== "undefined" && "serviceWorker" in navigator) {
             window.addEventListener("load", () => {
+                // Hardcode cache-bust parameter to rescue users stuck with immutable headers
                 navigator.serviceWorker
-                    .register("/sw.js")
+                    .register("/sw.js?v=4")
                     .then((registration) => {
                         console.log("SW registered:", registration.scope);
                     })
