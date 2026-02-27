@@ -17,7 +17,10 @@ export function SleepTimer({ accessToken }: SleepTimerProps) {
   const sleepTimerEnd = useRadioStore((s) => s.sleepTimerEnd);
   const setSleepTimer = useRadioStore((s) => s.setSleepTimer);
   const setPlaying = useRadioStore((s) => s.setPlaying);
+  const volume = useRadioStore((s) => s.volume);
+  const setVolume = useRadioStore((s) => s.setVolume);
   const ref = useRef<HTMLDivElement>(null);
+  const originalVolumeRef = useRef<number>(volume);
 
   // Click-outside-to-close
   useEffect(() => {
@@ -34,18 +37,21 @@ export function SleepTimer({ accessToken }: SleepTimerProps) {
   const setTimer = useCallback(
     (minutes: number) => {
       const endTime = Date.now() + minutes * 60 * 1000;
+      originalVolumeRef.current = volume;
       setSleepTimer(endTime);
       setIsOpen(false);
     },
-    [setSleepTimer]
+    [setSleepTimer, volume]
   );
 
   const clearTimer = useCallback(() => {
     setSleepTimer(null);
     setRemaining(null);
-  }, [setSleepTimer]);
+    // Restore original volume
+    setVolume(originalVolumeRef.current);
+  }, [setSleepTimer, setVolume]);
 
-  // Countdown tick
+  // Countdown tick with volume fade-out
   useEffect(() => {
     if (!sleepTimerEnd) {
       setRemaining(null);
@@ -56,10 +62,19 @@ export function SleepTimer({ accessToken }: SleepTimerProps) {
       const left = Math.max(0, sleepTimerEnd - Date.now());
       setRemaining(left);
 
+      // Fade-out volume in the last 60 seconds
+      const FADE_DURATION = 60_000; // 60 seconds
+      if (left > 0 && left < FADE_DURATION) {
+        const fadeRatio = left / FADE_DURATION;
+        const fadedVolume = originalVolumeRef.current * fadeRatio;
+        setVolume(Math.max(0.01, fadedVolume));
+      }
+
       if (left <= 0) {
         setSleepTimer(null);
         setRemaining(null);
-        pausePlayback(accessToken).catch(() => {});
+        setVolume(originalVolumeRef.current); // Restore for next session
+        pausePlayback(accessToken).catch(() => { });
         setPlaying(false);
       }
     };
@@ -67,7 +82,7 @@ export function SleepTimer({ accessToken }: SleepTimerProps) {
     tick();
     const interval = setInterval(tick, 1000);
     return () => clearInterval(interval);
-  }, [sleepTimerEnd, accessToken, setSleepTimer, setPlaying]);
+  }, [sleepTimerEnd, accessToken, setSleepTimer, setPlaying, setVolume]);
 
   const formatRemaining = (ms: number): string => {
     const totalSeconds = Math.ceil(ms / 1000);
@@ -86,11 +101,10 @@ export function SleepTimer({ accessToken }: SleepTimerProps) {
         onClick={() => setIsOpen(!isOpen)}
         whileHover={{ scale: 1.04 }}
         whileTap={{ scale: 0.96 }}
-        className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border transition-all ${
-          remaining !== null
+        className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border transition-all ${remaining !== null
             ? "bg-radio-accent/10 border-radio-accent/30 text-radio-accent"
             : "bg-white/[0.04] border-white/[0.08] text-white/40 hover:bg-white/[0.08] hover:text-white/60"
-        }`}
+          }`}
       >
         <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" />

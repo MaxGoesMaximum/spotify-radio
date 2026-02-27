@@ -344,6 +344,26 @@ export default function ProfilePage() {
                     </select>
                   </div>
 
+                  {/* Language */}
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-white/70 text-sm">Taal</p>
+                      <p className="text-white/30 text-xs">NL / EN / DE</p>
+                    </div>
+                    <select
+                      defaultValue={typeof window !== "undefined" ? (localStorage.getItem("sr_locale") || "nl") : "nl"}
+                      onChange={(e) => {
+                        localStorage.setItem("sr_locale", e.target.value);
+                        window.location.reload();
+                      }}
+                      className="bg-white/[0.05] border border-white/[0.08] rounded-lg px-3 py-1.5 text-white/70 text-sm appearance-none cursor-pointer"
+                    >
+                      <option value="nl">🇳🇱 Nederlands</option>
+                      <option value="en">🇬🇧 English</option>
+                      <option value="de">🇩🇪 Deutsch</option>
+                    </select>
+                  </div>
+
                   {/* DJ Voice */}
                   <div className="flex items-center justify-between">
                     <div>

@@ -5,6 +5,7 @@
 import type { SpotifyTrack, WeatherData, NewsArticle } from "@/types";
 import { getStation, getCurrentShow, type StationId, type DJTone } from "@/config/stations";
 import { getDJName, getInterjection } from "./voice-mapper";
+import { getHolidayDJLine } from "./holidays";
 import { getGreeting } from "@/lib/utils";
 import type { ScriptType } from "@/services/dj-scripts";
 
@@ -281,6 +282,12 @@ export function generateStationScript(
         `Het is ${getTimeString()} en we hebben weer geweldige muziek voor je klaarstaan.`
       );
       parts.push(pick(TIME_ADVICE[getTimeOfDayKey()]));
+
+      // Holiday-aware greeting
+      const holidayLine = getHolidayDJLine();
+      if (holidayLine) {
+        parts.push(holidayLine);
+      }
 
       if (Math.random() < 0.2) {
         const genreFacts = GENRE_FUN_FACTS[stationId] || GENRE_FUN_FACTS.default;

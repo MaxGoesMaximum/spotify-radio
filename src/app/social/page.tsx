@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { useSpotifySession } from "@/hooks/useSpotifySession";
 import { STATIONS } from "@/config/stations";
+import { InviteCard } from "@/components/ui/InviteCard";
 
 interface ActivityEntry {
     id: string;
@@ -213,6 +214,11 @@ export default function SocialPage() {
                         })}
                     </motion.div>
                 )}
+            </div>
+
+            {/* Invite Friends Card */}
+            <div className="mt-8">
+                <InviteCard />
             </div>
         </main>
     );
