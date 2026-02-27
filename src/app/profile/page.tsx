@@ -179,8 +179,8 @@ export default function ProfilePage() {
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-xs font-medium transition-all ${activeTab === tab.id
-                  ? "bg-white/[0.08] text-white shadow-sm"
-                  : "text-white/40 hover:text-white/60"
+                ? "bg-white/[0.08] text-white shadow-sm"
+                : "text-white/40 hover:text-white/60"
                 }`}
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -410,15 +410,53 @@ export default function ProfilePage() {
                   </div>
                 </div>
 
+                {/* Data & Privacy */}
+                <div className="bg-white/[0.02] rounded-2xl border border-white/[0.06] p-5">
+                  <h3 className="text-white/60 text-sm font-semibold mb-3">🔒 Privacy & Gegevens</h3>
+                  <div className="space-y-3">
+                    <button
+                      onClick={() => {
+                        window.location.href = "/api/user/export";
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.06] hover:border-white/[0.12] text-left transition-colors group"
+                    >
+                      <svg className="w-4 h-4 text-radio-accent shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                      </svg>
+                      <div>
+                        <p className="text-white/70 text-sm font-medium">Download mijn gegevens</p>
+                        <p className="text-white/30 text-[11px]">GDPR data export — al je gegevens als JSON</p>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+
                 {/* Danger Zone */}
                 <div className="bg-red-500/[0.03] rounded-2xl border border-red-500/[0.08] p-5">
                   <h3 className="text-red-400/80 text-sm font-semibold mb-3">Account</h3>
-                  <button
-                    onClick={handleLogout}
-                    className="px-4 py-2 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm hover:bg-red-500/20 transition-colors"
-                  >
-                    Uitloggen
-                  </button>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={handleLogout}
+                      className="px-4 py-2 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm hover:bg-red-500/20 transition-colors"
+                    >
+                      Uitloggen
+                    </button>
+                    <button
+                      onClick={async () => {
+                        if (!confirm("Weet je zeker dat je je account wilt verwijderen? Dit kan niet ongedaan worden gemaakt.")) return;
+                        if (!confirm("LAATSTE WAARSCHUWING: Al je gegevens, favorieten en luistergeschiedenis worden permanent verwijderd.")) return;
+                        const res = await fetch("/api/user/account", { method: "DELETE" });
+                        if (res.ok) {
+                          window.location.href = "/";
+                        } else {
+                          alert("Verwijderen mislukt. Probeer het later opnieuw.");
+                        }
+                      }}
+                      className="px-4 py-2 rounded-lg border border-red-500/20 text-red-400/60 text-sm hover:bg-red-500/10 hover:text-red-400 transition-colors"
+                    >
+                      Account verwijderen
+                    </button>
+                  </div>
                 </div>
               </motion.div>
             )}

@@ -1,20 +1,13 @@
 {
   "name": "Spotify Radio",
   "short_name": "SpotifyRadio",
-  "description": "Je eigen intelligente radiozender met Spotify, DJ, weer en nieuws.",
+  "description": "De intelligente live-radio ervaring met AI DJ, weer en nieuws",
   "start_url": "/radio",
   "display": "standalone",
   "background_color": "#000000",
   "theme_color": "#0A84FF",
-  "orientation": "any",
-  "categories": ["music", "entertainment"],
+  "orientation": "portrait-primary",
   "icons": [
-    {
-      "src": "/icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any"
-    },
     {
       "src": "/icon-192.png",
       "sizes": "192x192",
@@ -27,5 +20,11 @@
       "type": "image/png",
       "purpose": "any maskable"
     }
-  ]
+  ],
+  "categories": [
+    "music",
+    "entertainment"
+  ],
+  "lang": "nl",
+  "dir": "ltr"
 }

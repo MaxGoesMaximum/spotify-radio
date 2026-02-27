@@ -28,6 +28,7 @@ import { KeyboardShortcuts } from "./KeyboardShortcuts";
 import { EQPresets } from "./EQPresets";
 import { SessionStats } from "./SessionStats";
 import { QueuePreview } from "./QueuePreview";
+import { SongProgressBar } from "./SongProgressBar";
 import { pausePlayback, resumePlayback } from "@/services/spotify-api";
 import { getStationColor } from "@/config/stations";
 
@@ -230,6 +231,9 @@ export function RadioPlayer({ accessToken }: RadioPlayerProps) {
           >
             <Visualizer />
           </motion.div>
+
+          {/* ═══ Song Progress Bar ═══ */}
+          <SongProgressBar />
 
           {/* ═══ Transport Controls ═══ */}
           <motion.div

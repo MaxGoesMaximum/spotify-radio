@@ -50,6 +50,8 @@ export const viewport: Viewport = {
 
 import { NavigationBar } from "@/components/ui/NavigationBar";
 import { ToastContainer } from "@/components/ui/ToastContainer";
+import { CookieConsent } from "@/components/ui/CookieConsent";
+import { KeyboardShortcutsOverlay } from "@/components/ui/KeyboardShortcutsOverlay";
 
 export default function RootLayout({
   children,
@@ -63,6 +65,8 @@ export default function RootLayout({
           {children}
           <NavigationBar />
           <ToastContainer />
+          <CookieConsent />
+          <KeyboardShortcutsOverlay />
         </Providers>
       </body>
     </html>
