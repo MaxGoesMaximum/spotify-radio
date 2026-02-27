@@ -24,8 +24,8 @@ const nextConfig = {
     const isDev = process.env.NODE_ENV !== "production";
     // Allow https: so the Service Worker can fetch() caching proxy images
     const connectSrc = isDev
-      ? "'self' https: wss://dealer.spotify.com ws://localhost:*"
-      : "'self' https: wss://dealer.spotify.com";
+      ? "'self' https: wss://*.spotify.com ws://localhost:*"
+      : "'self' https: wss://*.spotify.com";
     return [
       {
         source: "/(.*)",
@@ -35,7 +35,7 @@ const nextConfig = {
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           {
             key: "Permissions-Policy",
-            value: "camera=(), microphone=(), geolocation=(self)",
+            value: "camera=(), microphone=(), geolocation=(self), autoplay=*, encrypted-media=*",
           },
           {
             key: "X-DNS-Prefetch-Control",
