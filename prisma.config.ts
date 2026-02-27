@@ -3,12 +3,16 @@
 import "dotenv/config";
 import { defineConfig } from "prisma/config";
 
+// Support both local SQLite and remote Turso
+const tursoUrl = process.env["TURSO_DATABASE_URL"];
+const databaseUrl = tursoUrl || process.env["DATABASE_URL"] || "file:./dev.db";
+
 export default defineConfig({
   schema: "prisma/schema.prisma",
   migrations: {
     path: "prisma/migrations",
   },
   datasource: {
-    url: process.env["DATABASE_URL"],
+    url: databaseUrl,
   },
 });
