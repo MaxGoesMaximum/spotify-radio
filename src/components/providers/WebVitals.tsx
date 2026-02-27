@@ -19,10 +19,10 @@ export function WebVitals() {
         navigationType: metric.navigationType,
       };
 
-      // Use sendBeacon for reliable delivery
-      if (navigator.sendBeacon) {
+      // Use sendBeacon for reliable delivery (Endpoint removed to prevent 405s)
+      /* if (navigator.sendBeacon) {
         navigator.sendBeacon("/api/vitals", JSON.stringify(body));
-      }
+      } */
     }
   });
 

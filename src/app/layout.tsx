@@ -29,6 +29,9 @@ export const metadata: Metadata = {
     statusBarStyle: "black-translucent",
     title: "Spotify Radio",
   },
+  other: {
+    "mobile-web-app-capable": "yes",
+  },
   openGraph: {
     title: "Spotify Radio",
     description: "Je eigen intelligente radiozender met Spotify, DJ, weer en nieuws.",

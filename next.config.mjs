@@ -22,10 +22,10 @@ const nextConfig = {
   productionBrowserSourceMaps: false,
   async headers() {
     const isDev = process.env.NODE_ENV !== "production";
-    // In development, allow localhost WebSocket; in production, restrict to self
+    // Allow https: so the Service Worker can fetch() caching proxy images
     const connectSrc = isDev
-      ? "'self' https://api.spotify.com wss://dealer.spotify.com ws://localhost:*"
-      : "'self' https://api.spotify.com wss://dealer.spotify.com";
+      ? "'self' https: wss://dealer.spotify.com ws://localhost:*"
+      : "'self' https: wss://dealer.spotify.com";
     return [
       {
         source: "/(.*)",
