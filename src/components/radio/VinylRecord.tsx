@@ -10,20 +10,32 @@ export function VinylRecord() {
   const isPlaying = useRadioStore((s) => s.isPlaying);
   const isAnnouncerSpeaking = useRadioStore((s) => s.isAnnouncerSpeaking);
   const currentGenre = useRadioStore((s) => s.currentGenre);
-  const progress = useRadioStore((s) => s.progress);
-  const duration = useRadioStore((s) => s.duration);
 
   const albumUrl = currentTrack?.album?.images?.[0]?.url;
   const spinning = isPlaying && !isAnnouncerSpeaking;
   const genreColor = getStationColor(currentGenre);
 
-  // Tonearm angle based on track progress (moves from -42 to -24 degrees)
-  const progressPercent = duration > 0 ? progress / duration : 0;
-  const tonearmAngle = spinning ? -42 + progressPercent * 18 : -50;
-
+  const tonearmRef = useRef<HTMLDivElement>(null);
   const controls = useAnimationControls();
   const rotationRef = useRef(0);
   const lastSpinning = useRef(spinning);
+  const isSpinningRef = useRef(spinning);
+
+  // Sync spinning ref for the DOM subscription
+  useEffect(() => {
+    isSpinningRef.current = spinning;
+
+    // Smooth insertion/retraction of tonearm when playback status changes
+    if (tonearmRef.current) {
+      tonearmRef.current.style.transition = spinning
+        ? "transform 2s ease-out"
+        : "transform 1.5s cubic-bezier(0.16, 1, 0.3, 1)";
+
+      if (!spinning) {
+        tonearmRef.current.style.transform = `rotate(-50deg)`;
+      }
+    }
+  }, [spinning]);
 
   // Handle spin start/stop with deceleration
   useEffect(() => {
@@ -66,7 +78,18 @@ export function VinylRecord() {
         },
       });
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Subscribe to progress changes OUTSIDE of React renders to directly mutate the Tonearm DOM
+  useEffect(() => {
+    const unsub = useRadioStore.subscribe((state) => {
+      if (!tonearmRef.current || !isSpinningRef.current) return;
+      const progressPercent = state.duration > 0 ? state.progress / state.duration : 0;
+      const tonearmAngle = -42 + progressPercent * 18;
+      tonearmRef.current.style.transform = `rotate(${tonearmAngle}deg)`;
+    });
+    return unsub;
   }, []);
 
   return (
@@ -152,14 +175,13 @@ export function VinylRecord() {
         />
       )}
 
-      {/* Tonearm — tracks progress */}
+      {/* Tonearm — tracks progress directly via ref */}
       <div
+        ref={tonearmRef}
         className="absolute -right-1 -top-2 origin-right z-10"
         style={{
-          transform: `rotate(${tonearmAngle}deg)`,
-          transition: spinning
-            ? "transform 2s ease-out"
-            : "transform 1.5s cubic-bezier(0.16, 1, 0.3, 1)",
+          transform: `rotate(-50deg)`, // Initial paused position
+          transition: "transform 1.5s cubic-bezier(0.16, 1, 0.3, 1)",
         }}
       >
         <div className="relative w-20 sm:w-24 h-1">

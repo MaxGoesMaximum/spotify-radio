@@ -33,9 +33,8 @@ function Marquee({ text, className }: { text: string; className?: string }) {
     <div ref={containerRef} className={`overflow-hidden ${className || ""}`}>
       <span
         ref={textRef}
-        className={`inline-block whitespace-nowrap ${
-          needsScroll ? "animate-slide-left" : ""
-        }`}
+        className={`inline-block whitespace-nowrap ${needsScroll ? "animate-slide-left" : ""
+          }`}
         style={needsScroll ? { animationDuration: `${Math.max(8, text.length * 0.25)}s` } : undefined}
       >
         {text}
@@ -50,23 +49,9 @@ export function NowPlaying({ accessToken }: NowPlayingProps) {
   const currentTrack = useRadioStore((s) => s.currentTrack);
   const isPlaying = useRadioStore((s) => s.isPlaying);
   const isAnnouncerSpeaking = useRadioStore((s) => s.isAnnouncerSpeaking);
-  const progress = useRadioStore((s) => s.progress);
-  const duration = useRadioStore((s) => s.duration);
   const currentGenre = useRadioStore((s) => s.currentGenre);
-  const [localProgress, setLocalProgress] = useState(0);
 
   const station = getStation(currentGenre);
-
-  useEffect(() => {
-    setLocalProgress(progress);
-    if (!isPlaying) return;
-
-    const interval = setInterval(() => {
-      setLocalProgress((prev) => Math.min(prev + 1000, duration));
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [progress, isPlaying, duration]);
 
   if (!currentTrack) {
     return (
@@ -82,8 +67,6 @@ export function NowPlaying({ accessToken }: NowPlayingProps) {
       </div>
     );
   }
-
-  const progressPercent = duration > 0 ? (localProgress / duration) * 100 : 0;
 
   return (
     <AnimatePresence mode="wait">
@@ -179,33 +162,6 @@ export function NowPlaying({ accessToken }: NowPlayingProps) {
         <p className="text-white/20 text-xs truncate max-w-md mx-auto lg:mx-0">
           {currentTrack.album.name}
         </p>
-
-        {/* Progress bar */}
-        <div className="space-y-1 max-w-md mx-auto lg:mx-0 pt-1">
-          <div className="relative h-1 bg-white/[0.06] rounded-full overflow-hidden group cursor-pointer">
-            <motion.div
-              className="h-full rounded-full relative"
-              style={{
-                width: `${progressPercent}%`,
-                background: `linear-gradient(to right, ${station.color}, ${station.color}88)`,
-              }}
-              transition={{ duration: 0.3 }}
-            >
-              {/* Glowing tip */}
-              <div
-                className="absolute right-0 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                style={{
-                  backgroundColor: station.color,
-                  boxShadow: `0 0 8px ${station.color}`,
-                }}
-              />
-            </motion.div>
-          </div>
-          <div className="flex justify-between text-[10px] text-white/20 font-mono tabular-nums">
-            <span>{formatTime(localProgress)}</span>
-            <span>{formatTime(duration)}</span>
-          </div>
-        </div>
 
         {/* Actions row */}
         <div className="flex items-center justify-center lg:justify-start gap-1 pt-0.5">
