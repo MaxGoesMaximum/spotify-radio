@@ -168,7 +168,7 @@ export function RadioPlayer({ accessToken }: RadioPlayerProps) {
         </div>
 
         {/* Right: Quick actions */}
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 flex-wrap justify-end">
           <EQPresets />
           <QueuePreview />
           <SleepTimer accessToken={accessToken} />

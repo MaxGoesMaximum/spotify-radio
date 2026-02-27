@@ -61,7 +61,7 @@ export function AmbientBackground() {
                                 x: { duration: 30, repeat: Infinity, ease: "linear" },
                                 y: { duration: 30, repeat: Infinity, ease: "linear" }
                             }}
-                            className="absolute top-[-20%] left-[-20%] w-[140%] h-[140%] rounded-full blur-[140px] mix-blend-screen"
+                            className="absolute top-[-20%] left-[-20%] w-[140%] h-[140%] rounded-full mix-blend-screen will-change-transform"
                         />
                         <motion.div
                             animate={{
@@ -78,7 +78,7 @@ export function AmbientBackground() {
                                 x: { duration: 40, repeat: Infinity, ease: "linear" },
                                 y: { duration: 40, repeat: Infinity, ease: "linear" }
                             }}
-                            className="absolute bottom-[-20%] right-[-20%] w-[140%] h-[140%] rounded-full blur-[140px] mix-blend-screen"
+                            className="absolute bottom-[-20%] right-[-20%] w-[140%] h-[140%] rounded-full mix-blend-screen will-change-transform"
                         />
                     </motion.div>
                 )}

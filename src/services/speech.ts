@@ -54,6 +54,8 @@ async function fetchTTSAudio(
   return blobUrl;
 }
 
+let currentPlaybackToken = 0;
+
 export async function speak(
   text: string,
   volume: number = 0.9,
@@ -61,11 +63,20 @@ export async function speak(
   rate?: string,
   pitch?: string
 ): Promise<void> {
+  // Increment token so any pending async fetches know they are stale
+  const myToken = ++currentPlaybackToken;
+
   // Stop any ongoing speech
   stopSpeaking();
 
   try {
     const blobUrl = await fetchTTSAudio(text, voice, rate, pitch);
+
+    // If another speak() was called while we were fetching the audio, abort!
+    if (myToken !== currentPlaybackToken) {
+      console.log("TTS aborted due to newer speech request.");
+      return;
+    }
 
     return new Promise<void>((resolve) => {
       const audio = new Audio(blobUrl);
@@ -73,22 +84,31 @@ export async function speak(
       currentAudio = audio;
 
       audio.onended = () => {
-        currentAudio = null;
+        if (myToken === currentPlaybackToken) currentAudio = null;
         resolve();
       };
 
       audio.onerror = () => {
-        currentAudio = null;
-        console.warn("TTS audio playback error, falling back to Web Speech");
-        fallbackSpeak(text, volume).then(resolve);
+        if (myToken === currentPlaybackToken) {
+          currentAudio = null;
+          console.warn("TTS audio playback error, falling back to Web Speech");
+          fallbackSpeak(text, volume).then(resolve);
+        } else {
+          resolve();
+        }
       };
 
       audio.play().catch(() => {
-        currentAudio = null;
-        fallbackSpeak(text, volume).then(resolve);
+        if (myToken === currentPlaybackToken) {
+          currentAudio = null;
+          fallbackSpeak(text, volume).then(resolve);
+        } else {
+          resolve();
+        }
       });
     });
   } catch (error) {
+    if (myToken !== currentPlaybackToken) return;
     console.warn("TTS fetch error, falling back to Web Speech:", error);
     return fallbackSpeak(text, volume);
   }

@@ -61,7 +61,7 @@ function RadioPageContent() {
   if (!session) return null;
 
   return (
-    <div className="min-h-screen relative">
+    <div className="min-h-screen relative overflow-hidden w-full max-w-[100vw]">
       <AmbientBackground />
       <ConnectionBanner />
       <WelcomeOverlay />
