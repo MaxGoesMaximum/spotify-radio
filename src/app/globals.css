@@ -1,0 +1,204 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ═══ Theme CSS Custom Properties ═══ */
+:root {
+  --foreground-rgb: 255, 255, 255;
+  --background-start-rgb: 10, 10, 26;
+  --background-end-rgb: 10, 10, 26;
+
+  /* Theme defaults (overridden by ThemeProvider) */
+  --theme-bg: #0a0a1a;
+  --theme-surface: #141428;
+  --theme-border: rgba(255, 255, 255, 0.08);
+  --theme-text-primary: #ffffff;
+  --theme-text-secondary: rgba(255, 255, 255, 0.6);
+  --theme-text-dim: rgba(255, 255, 255, 0.3);
+  --theme-accent: #ff6b35;
+  --theme-glow: #ff4444;
+  --theme-glass-opacity: 0.04;
+  --theme-border-opacity: 0.08;
+  --theme-glow-intensity: 0.8;
+}
+
+body {
+  color: var(--theme-text-primary);
+  background: var(--theme-bg);
+  overflow-x: hidden;
+  transition: background-color 0.5s ease, color 0.5s ease;
+}
+
+/* ═══ Typography System ═══ */
+@layer components {
+  .text-hero {
+    @apply text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-[1.1];
+    font-family: var(--font-heading), var(--font-display), system-ui, sans-serif;
+  }
+
+  .text-heading {
+    @apply text-2xl sm:text-3xl font-bold tracking-tight leading-tight;
+    font-family: var(--font-heading), var(--font-display), system-ui, sans-serif;
+  }
+
+  .text-title {
+    @apply text-lg sm:text-xl font-semibold tracking-tight;
+  }
+
+  .text-body {
+    @apply text-sm sm:text-base leading-relaxed;
+  }
+
+  .text-label {
+    @apply text-xs font-medium uppercase tracking-wider;
+  }
+
+  .text-meta {
+    @apply text-[11px] font-mono tabular-nums;
+  }
+}
+
+/* ═══ Motion System ═══ */
+@layer utilities {
+  .transition-fast {
+    transition-duration: 150ms;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .transition-medium {
+    transition-duration: 300ms;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .transition-hero {
+    transition-duration: 700ms;
+    transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .transition-theme {
+    transition: background-color 0.5s ease, border-color 0.5s ease, color 0.3s ease, box-shadow 0.5s ease;
+  }
+}
+
+/* ═══ Custom Scrollbar ═══ */
+::-webkit-scrollbar {
+  width: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 2px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+/* Firefox scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.06) transparent;
+}
+
+/* ═══ Text Rendering ═══ */
+* {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ═══ Glass Utilities (theme-aware) ═══ */
+@layer utilities {
+  .glass {
+    background: rgba(255, 255, 255, var(--theme-glass-opacity));
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid rgba(255, 255, 255, var(--theme-border-opacity));
+  }
+
+  .glass-heavy {
+    background: rgba(255, 255, 255, calc(var(--theme-glass-opacity) * 1.5));
+    backdrop-filter: blur(48px);
+    -webkit-backdrop-filter: blur(48px);
+    border: 1px solid rgba(255, 255, 255, calc(var(--theme-border-opacity) * 1.25));
+  }
+
+  .glass-hover {
+    @apply hover:bg-white/[0.08] hover:border-white/[0.15];
+  }
+
+  .text-glow {
+    text-shadow: 0 0 10px currentColor, 0 0 20px currentColor;
+  }
+
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+/* ═══ Equalizer Animations ═══ */
+@keyframes eq-bar-1 {
+  0%, 100% { height: 20%; }
+  50% { height: 80%; }
+}
+
+@keyframes eq-bar-2 {
+  0%, 100% { height: 50%; }
+  50% { height: 30%; }
+}
+
+@keyframes eq-bar-3 {
+  0%, 100% { height: 30%; }
+  50% { height: 90%; }
+}
+
+/* ═══ Selection Color ═══ */
+::selection {
+  background: rgba(255, 107, 53, 0.25);
+  color: white;
+}
+
+/* ═══ Focus Styles ═══ */
+:focus-visible {
+  outline: 2px solid var(--theme-accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+button:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* ═══ Reduced Motion ═══ */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ═══ Ambient Background Drift ═══ */
+@keyframes ambient-drift {
+  0%, 100% { transform: translate(0%, 0%) scale(1); }
+  25% { transform: translate(2%, -3%) scale(1.02); }
+  50% { transform: translate(-1%, 2%) scale(0.98); }
+  75% { transform: translate(-3%, -1%) scale(1.01); }
+}
+
+.animate-ambient-drift {
+  animation: ambient-drift 20s ease-in-out infinite;
+}
+
+/* ═══ Smooth Fade In ═══ */
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.6s ease-out forwards;
+}

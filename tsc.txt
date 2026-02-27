@@ -1,0 +1,5 @@
+﻿src/components/ui/ThemeSwitcher.tsx(14,7): error TS2322: Type '"neon"' is not assignable to type 'ThemeId'.
+src/components/ui/ThemeSwitcher.tsx(15,7): error TS2322: Type '"retro"' is not assignable to type 'ThemeId'.
+src/components/ui/ThemeSwitcher.tsx(16,7): error TS2322: Type '"minimal"' is not assignable to type 'ThemeId'.
+src/config/theme-context.tsx(14,3): error TS2322: Type '"neon"' is not assignable to type 'ThemeId'.
+src/config/theme-context.tsx(21,51): error TS2345: Argument of type '"neon"' is not assignable to parameter of type 'ThemeId | (() => ThemeId)'.

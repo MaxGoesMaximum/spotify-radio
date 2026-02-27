@@ -1,0 +1,36 @@
+node_modules/
+.next/
+out/
+
+# Environment variables (NEVER commit these!)
+.env
+.env.local
+.env.production
+.env*.local
+
+# Database
+*.db
+*.db-journal
+prisma/migrations/
+
+# Build artifacts
+*.tsbuildinfo
+next-env.d.ts
+
+# Generated Prisma client
+/src/generated/prisma
+
+# IDE / Editor
+.claude/
+.vscode/
+*.swp
+*.swo
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS files
+Thumbs.db
+.DS_Store
+nul
