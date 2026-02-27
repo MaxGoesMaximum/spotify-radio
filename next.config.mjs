@@ -24,8 +24,8 @@ const nextConfig = {
     const isDev = process.env.NODE_ENV !== "production";
     // Allow https: so the Service Worker can fetch() caching proxy images
     const connectSrc = isDev
-      ? "'self' https: wss://*.spotify.com ws://localhost:*"
-      : "'self' https: wss://*.spotify.com";
+      ? "'self' https: https://*.spotify.com https://apresolve.spotify.com https://spclient.wg.spotify.com wss://*.spotify.com ws://localhost:*"
+      : "'self' https: https://*.spotify.com https://apresolve.spotify.com https://spclient.wg.spotify.com wss://*.spotify.com";
     return [
       {
         source: "/(.*)",
