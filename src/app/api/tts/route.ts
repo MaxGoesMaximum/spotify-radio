@@ -4,6 +4,7 @@ import fs from "fs";
 import os from "os";
 import { execFile } from "child_process";
 import { rateLimit, rateLimitHeaders } from "@/lib/rate-limit";
+import "node-edge-tts"; // Force Vercel NFT to trace and include this module in production
 
 // Force Node.js runtime
 export const runtime = "nodejs";
@@ -80,7 +81,7 @@ function synthesizeTTS(
         // Clean up args file (worker should have already deleted it, but just in case)
         try {
           if (fs.existsSync(argsFilePath)) fs.unlinkSync(argsFilePath);
-        } catch {}
+        } catch { }
 
         if (error) {
           reject(
@@ -201,7 +202,7 @@ export async function POST(request: NextRequest) {
       // Clean up temp file
       try {
         fs.unlinkSync(tmpFile);
-      } catch {}
+      } catch { }
 
       if (audioBuffer.length === 0) {
         throw new Error("Empty audio output");
@@ -224,7 +225,7 @@ export async function POST(request: NextRequest) {
       // Clean up temp file on error
       try {
         fs.unlinkSync(tmpFile);
-      } catch {}
+      } catch { }
       throw synthError;
     }
   } catch (error) {

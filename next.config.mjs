@@ -22,6 +22,14 @@ const nextConfig = {
         protocol: "https",
         hostname: "image-cdn-ak.spotifycdn.com",
       },
+      {
+        protocol: "https",
+        hostname: "**.spotifycdn.com",
+      },
+      {
+        protocol: "https",
+        hostname: "**.scdn.co",
+      },
     ],
   },
   // Compress responses for faster loading
@@ -62,7 +70,7 @@ const nextConfig = {
               "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://sdk.scdn.co",
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               "font-src 'self' https://fonts.gstatic.com",
-              "img-src 'self' data: blob: https://i.scdn.co https://mosaic.scdn.co https://image-cdn-ak.spotifycdn.com",
+              "img-src 'self' data: blob: https://*.scdn.co https://*.spotifycdn.com",
               `connect-src ${connectSrc}`,
               "frame-src 'self' https://sdk.scdn.co",
               "media-src 'self' blob: data:",
