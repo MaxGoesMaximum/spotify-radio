@@ -1,11 +1,17 @@
 // ═══════════════════════════════════════════════════════════════
-//  MUSIC SELECTION ENGINE — Smart rotation, dedup, taste-aware
+//  MUSIC SELECTION ENGINE — Smart rotation, audio-feature-aware,
+//  mood arcs, genre-seed fallback, taste-aware
 // ═══════════════════════════════════════════════════════════════
 
 import type { SpotifyTrack } from "@/types";
 import type { StationId, StationConfig } from "@/config/stations";
 import { getStation } from "@/config/stations";
-import { searchTracksMulti, getRecommendations } from "./spotify-api";
+import {
+  searchTracksMulti,
+  getRecommendations,
+  getAudioFeatures,
+  type AudioFeatures,
+} from "./spotify-api";
 
 // ── Rotation Categories ─────────────────────────────────────
 
@@ -14,6 +20,62 @@ type RotationSlot = "C" | "R" | "G"; // Current, Recurrent, Gold
 const ROTATION_CLOCK: RotationSlot[] = [
   "C", "C", "R", "G", "C", "R", "C", "G", "C", "C", "R", "G",
 ];
+
+// ── Mood Arc Curves ─────────────────────────────────────────
+// These define how energy/valence should evolve throughout each
+// time period. Each gives a smooth target based on the fractional
+// progress through the period (0 = start, 1 = end of period).
+
+interface MoodPoint {
+  energy: number;
+  valence: number;
+  danceability: number;
+}
+
+function getMoodTarget(): MoodPoint {
+  const now = new Date();
+  const hour = now.getHours();
+  const minute = now.getMinutes();
+  const fractionalHour = hour + minute / 60;
+
+  // Morning (6–12): gentle ramp from calm to energetic
+  if (hour >= 6 && hour < 12) {
+    const t = (fractionalHour - 6) / 6; // 0 at 6am, 1 at noon
+    return {
+      energy: 0.45 + t * 0.30, // 0.45 → 0.75
+      valence: 0.50 + t * 0.20, // 0.50 → 0.70
+      danceability: 0.40 + t * 0.25, // 0.40 → 0.65
+    };
+  }
+
+  // Afternoon (12–18): plateau with a slight peak
+  if (hour >= 12 && hour < 18) {
+    const t = (fractionalHour - 12) / 6;
+    const peak = Math.sin(t * Math.PI); // peaks at 3pm
+    return {
+      energy: 0.65 + peak * 0.10, // 0.65 → 0.75 → 0.65
+      valence: 0.65 + peak * 0.10, // 0.65 → 0.75 → 0.65
+      danceability: 0.60 + peak * 0.10, // 0.60 → 0.70 → 0.60
+    };
+  }
+
+  // Evening (18–23): graceful decline
+  if (hour >= 18 && hour < 23) {
+    const t = (fractionalHour - 18) / 5; // 0 at 6pm, 1 at 11pm
+    return {
+      energy: 0.65 - t * 0.25, // 0.65 → 0.40
+      valence: 0.60 - t * 0.15, // 0.60 → 0.45
+      danceability: 0.55 - t * 0.20, // 0.55 → 0.35
+    };
+  }
+
+  // Night (23–6): low and steady
+  return {
+    energy: 0.35,
+    valence: 0.40,
+    danceability: 0.30,
+  };
+}
 
 // ── Selection State ─────────────────────────────────────────
 
@@ -32,6 +94,9 @@ interface SelectionState {
   tasteProfile: TasteProfile;
   candidatePool: SpotifyTrack[]; // Pre-fetched candidates
   lastFetchStation: StationId | null;
+  // Audio feature cache for transition scoring
+  audioFeatureCache: Map<string, AudioFeatures>;
+  lastPlayedFeatures: AudioFeatures | null;
 }
 
 const MAX_RECENT_ARTISTS = 6;
@@ -48,6 +113,8 @@ let state: SelectionState = {
   tasteProfile: loadTasteProfile(),
   candidatePool: [],
   lastFetchStation: null,
+  audioFeatureCache: new Map(),
+  lastPlayedFeatures: null,
 };
 
 // ── Taste Profile Persistence ───────────────────────────────
@@ -125,6 +192,8 @@ export function resetSelectionState() {
     tasteProfile: loadTasteProfile(),
     candidatePool: [],
     lastFetchStation: null,
+    audioFeatureCache: new Map(),
+    lastPlayedFeatures: null,
   };
 }
 
@@ -151,6 +220,12 @@ export async function selectNextTrack(
   if (state.candidatePool.length < 5) {
     const newCandidates = await fetchCandidates(station, accessToken);
     state.candidatePool.push(...newCandidates);
+
+    // Fetch audio features for new candidates (fire-and-forget with cache)
+    fetchAndCacheAudioFeatures(
+      accessToken,
+      newCandidates.map((t) => t.id)
+    );
   }
 
   // Filter out already-played tracks and recent artists
@@ -158,7 +233,7 @@ export async function selectNextTrack(
     if (state.playedTrackIds.has(track.id)) return false;
     const artistIds = track.artists.map((a) => a.id);
     if (artistIds.some((id) => state.recentArtistIds.includes(id))) return false;
-    // Filter tracks that are too short (< 60s) or too long (> 10min)
+    // Filter tracks that are too short (<60s) or too long (>10min)
     if (track.duration_ms < 60000 || track.duration_ms > 600000) return false;
     return true;
   });
@@ -200,6 +275,12 @@ function pickAndRecord(track: SpotifyTrack): SpotifyTrack {
     state.artistPlayCounts.set(artist.id, count + 1);
   }
 
+  // Update last played audio features
+  const features = state.audioFeatureCache.get(track.id);
+  if (features) {
+    state.lastPlayedFeatures = features;
+  }
+
   // Advance rotation
   state.rotationPosition =
     (state.rotationPosition + 1) % ROTATION_CLOCK.length;
@@ -215,6 +296,7 @@ function scoreTracks(
   station: StationConfig
 ): SpotifyTrack[] {
   const profile = state.tasteProfile;
+  const moodTarget = getMoodTarget();
 
   const scored = tracks.map((track) => {
     let score = 0;
@@ -232,6 +314,40 @@ function scoreTracks(
     if (slot === "C" && age <= 2 && pop >= 60) score += 0.3;
     else if (slot === "R" && age > 2 && age <= 8 && pop >= 40) score += 0.25;
     else if (slot === "G" && age > 8) score += 0.2;
+
+    // ── Audio Feature Scoring ───────────────────────────
+    const features = state.audioFeatureCache.get(track.id);
+    if (features) {
+      // Mood arc alignment: reward tracks close to the current mood target
+      const energyDiff = Math.abs(features.energy - moodTarget.energy);
+      const valenceDiff = Math.abs(features.valence - moodTarget.valence);
+      const danceDiff = Math.abs(features.danceability - moodTarget.danceability);
+
+      // Score based on proximity to mood target (closer = better)
+      score += Math.max(0, 0.25 - energyDiff * 0.5); // Up to +0.25
+      score += Math.max(0, 0.15 - valenceDiff * 0.3); // Up to +0.15
+      score += Math.max(0, 0.10 - danceDiff * 0.2);   // Up to +0.10
+
+      // Smooth transition scoring: if we have a last-played track,
+      // reward candidates that transition smoothly from it
+      if (state.lastPlayedFeatures) {
+        const lastEnergy = state.lastPlayedFeatures.energy;
+        const lastTempo = state.lastPlayedFeatures.tempo;
+
+        const eDelta = Math.abs(features.energy - lastEnergy);
+        const tDelta = Math.abs(features.tempo - lastTempo);
+
+        // Reward smooth energy transitions (±0.15 is ideal)
+        if (eDelta <= 0.15) score += 0.20;
+        else if (eDelta <= 0.25) score += 0.10;
+        else score -= 0.10; // Penalize harsh jumps
+
+        // Reward smooth tempo transitions (±20 BPM is ideal)
+        if (tDelta <= 20) score += 0.15;
+        else if (tDelta <= 40) score += 0.05;
+        else score -= 0.05;
+      }
+    }
 
     // Taste bonus: liked artists
     const artistIds = track.artists.map((a) => a.id);
@@ -260,8 +376,8 @@ function scoreTracks(
       score += 0.1;
     }
 
-    // Random factor for variety
-    score += (Math.random() - 0.5) * 0.2;
+    // Random factor for variety (reduced compared to before since we now score more intentionally)
+    score += (Math.random() - 0.5) * 0.12;
 
     return { track, score };
   });
@@ -275,63 +391,101 @@ async function fetchCandidates(
   station: StationConfig,
   accessToken: string
 ): Promise<SpotifyTrack[]> {
-  // Use search fallback if we have no history (first track of the session)
-  if (state.playedTrackIds.size === 0 && state.recentArtistIds.length === 0) {
-    const slot = ROTATION_CLOCK[state.rotationPosition % ROTATION_CLOCK.length];
-    const queries = buildSearchQueries(station, slot);
-    const results = await searchTracksMulti(accessToken, queries, 15);
-    return results.filter((t) => (t.popularity ?? 50) >= Math.max(0, station.popularityRange.min - 15));
-  }
-
-  // If we have history, use Spotify's Recommendation API for a seamless, logical flow
-  const hour = new Date().getHours();
-  let baseEnergy = 0.7;
-  let baseValence = 0.5;
-
-  if (hour >= 6 && hour < 12) {
-    baseEnergy = 0.6; // Morning start
-    baseValence = 0.6;
-  } else if (hour >= 12 && hour < 18) {
-    baseEnergy = 0.7; // Afternoon
-    baseValence = 0.7;
-  } else if (hour >= 18 && hour < 23) {
-    baseEnergy = 0.55; // Evening cooldown
-    baseValence = 0.5;
-  } else {
-    baseEnergy = 0.4; // Night chill
-    baseValence = 0.4;
-  }
+  const moodTarget = getMoodTarget();
 
   // Dynamic set ramping: increase energy slightly the longer they listen (up to a cap)
-  const sessionDepth = Math.min(state.playedTrackIds.size, 20); // Cap at 20 tracks
-  // Ramp up by 0.01 per track, max +0.20
-  const energyRamp = sessionDepth * 0.01;
-  const targetEnergy = Math.min(1.0, baseEnergy + energyRamp);
-  const targetValence = Math.min(1.0, baseValence + (energyRamp / 2));
+  const sessionDepth = Math.min(state.playedTrackIds.size, 20);
+  const energyRamp = sessionDepth * 0.005; // Gentler ramp than before
+  const targetEnergy = Math.min(1.0, moodTarget.energy + energyRamp);
+  const targetValence = Math.min(1.0, moodTarget.valence + energyRamp / 2);
 
-  const playedArr = Array.from(state.playedTrackIds);
-  const seedTracks = playedArr.slice(-2).join(","); // Use up to 2 recent tracks
+  // ── Strategy 1: Spotify Recommendations API (primary) ──
+  if (state.playedTrackIds.size > 0 || state.recentArtistIds.length > 0) {
+    const playedArr = Array.from(state.playedTrackIds);
+    const seedTracks = playedArr.slice(-2).join(",");
 
-  try {
-    const results = await getRecommendations(accessToken, {
-      seed_tracks: seedTracks || undefined,
-      seed_artists: !seedTracks && state.recentArtistIds.length > 0 ? state.recentArtistIds.slice(-2).join(",") : undefined,
-      target_energy: targetEnergy,
-      target_valence: targetValence,
-      limit: 15,
-      min_popularity: Math.max(0, station.popularityRange.min - 15),
-    });
+    try {
+      const results = await getRecommendations(accessToken, {
+        seed_tracks: seedTracks || undefined,
+        seed_artists:
+          !seedTracks && state.recentArtistIds.length > 0
+            ? state.recentArtistIds.slice(-2).join(",")
+            : undefined,
+        target_energy: targetEnergy,
+        target_valence: targetValence,
+        target_danceability: moodTarget.danceability,
+        limit: 20,
+        min_popularity: Math.max(0, station.popularityRange.min - 15),
+      });
 
-    if (results.length > 0) return results;
-  } catch (error) {
-    console.error("Failed to fetch recommendations, falling back to search", error);
+      if (results.length > 0) return results;
+    } catch (error) {
+      console.error("Recommendations with track seeds failed:", error);
+    }
   }
 
-  // Fallback if recommendations fail
+  // ── Strategy 2: Genre-seed fallback for cold starts or thin history ──
+  if (station.seedGenres.length > 0) {
+    // Pick up to 2 genre seeds (Spotify allows max 5 seeds total)
+    const genreSeeds = station.seedGenres
+      .sort(() => Math.random() - 0.5)
+      .slice(0, 2)
+      .join(",");
+
+    try {
+      const results = await getRecommendations(accessToken, {
+        seed_genres: genreSeeds,
+        target_energy: targetEnergy,
+        target_valence: targetValence,
+        target_danceability: moodTarget.danceability,
+        limit: 20,
+        min_popularity: Math.max(0, station.popularityRange.min - 15),
+      });
+
+      if (results.length > 0) return results;
+    } catch (error) {
+      console.error("Recommendations with genre seeds failed:", error);
+    }
+  }
+
+  // ── Strategy 3: Search fallback ──
   const slot = ROTATION_CLOCK[state.rotationPosition % ROTATION_CLOCK.length];
   const queries = buildSearchQueries(station, slot);
   const results = await searchTracksMulti(accessToken, queries, 15);
-  return results.filter((t) => (t.popularity ?? 50) >= Math.max(0, station.popularityRange.min - 15));
+  return results.filter(
+    (t) => (t.popularity ?? 50) >= Math.max(0, station.popularityRange.min - 15)
+  );
+}
+
+/**
+ * Fetch and cache audio features for a batch of track IDs.
+ * Runs asynchronously without blocking the selection flow.
+ */
+async function fetchAndCacheAudioFeatures(
+  accessToken: string,
+  trackIds: string[]
+) {
+  // Only fetch features we don't already have
+  const uncached = trackIds.filter((id) => !state.audioFeatureCache.has(id));
+  if (uncached.length === 0) return;
+
+  try {
+    const features = await getAudioFeatures(accessToken, uncached);
+    for (const [id, feat] of features) {
+      state.audioFeatureCache.set(id, feat);
+    }
+
+    // Trim cache if it gets too large (keep last 200)
+    if (state.audioFeatureCache.size > 200) {
+      const entries = Array.from(state.audioFeatureCache.entries());
+      const toRemove = entries.slice(0, entries.length - 200);
+      for (const [key] of toRemove) {
+        state.audioFeatureCache.delete(key);
+      }
+    }
+  } catch (error) {
+    console.error("Audio feature cache error:", error);
+  }
 }
 
 function buildSearchQueries(
@@ -418,5 +572,9 @@ export function getSelectionStats() {
     rotationPosition: state.rotationPosition,
     rotationSlot:
       ROTATION_CLOCK[state.rotationPosition % ROTATION_CLOCK.length],
+    cachedAudioFeatures: state.audioFeatureCache.size,
+    lastPlayedEnergy: state.lastPlayedFeatures?.energy ?? null,
+    lastPlayedTempo: state.lastPlayedFeatures?.tempo ?? null,
+    currentMoodTarget: getMoodTarget(),
   };
 }

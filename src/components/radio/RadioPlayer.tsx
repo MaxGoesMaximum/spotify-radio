@@ -32,7 +32,7 @@ import { SongProgressBar } from "./SongProgressBar";
 import { SongReactions } from "./SongReactions";
 import { FullscreenPlayer } from "./FullscreenPlayer";
 import { VisualizerStyleSelector } from "./VisualizerStyleSelector";
-import { pausePlayback, resumePlayback } from "@/services/spotify-api";
+import { pausePlayback, resumePlayback, SpotifyAuthError } from "@/services/spotify-api";
 import { getStationColor } from "@/config/stations";
 
 interface RadioPlayerProps {
@@ -46,7 +46,6 @@ export function RadioPlayer({ accessToken }: RadioPlayerProps) {
   const deviceId = useRadioStore((s) => s.deviceId);
   const setPlaying = useRadioStore((s) => s.setPlaying);
   const currentGenre = useRadioStore((s) => s.currentGenre);
-  const partyMode = useRadioStore((s) => s.partyMode);
 
   const [genreColor, setGenreColor] = useState(getStationColor(currentGenre));
 
@@ -66,7 +65,15 @@ export function RadioPlayer({ accessToken }: RadioPlayerProps) {
 
   const { setOnTrackEnd } = useSpotifyPlayer(accessToken);
   const { startRadio, playNextTrack, skipTrack, changeGenre } =
-    useRadioEngine(accessToken);
+    useRadioEngine(accessToken, handleAuthError);
+
+  // Auth error handler — triggers session refresh
+  function handleAuthError() {
+    console.warn("[RadioPlayer] Auth error, refreshing session...");
+    // The session provider will auto-refresh on next poll;
+    // force an immediate refresh by reloading the session endpoint
+    fetch("/api/spotify/session").catch(() => { });
+  }
 
   // Initialize data hooks
   useGeolocation();
@@ -95,12 +102,20 @@ export function RadioPlayer({ accessToken }: RadioPlayerProps) {
 
   const handlePlayPause = async () => {
     if (!accessToken || !deviceId) return;
-    if (isPlaying) {
-      await pausePlayback(accessToken);
-      setPlaying(false);
-    } else {
-      await resumePlayback(accessToken, deviceId);
-      setPlaying(true);
+    try {
+      if (isPlaying) {
+        await pausePlayback(accessToken);
+        setPlaying(false);
+      } else {
+        await resumePlayback(accessToken, deviceId);
+        setPlaying(true);
+      }
+    } catch (error) {
+      if (error instanceof SpotifyAuthError) {
+        handleAuthError();
+      } else {
+        console.error("Play/pause error:", error);
+      }
     }
   };
 

@@ -1,8 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { rateLimit, rateLimitHeaders } from "@/lib/rate-limit";
 import { weatherQuerySchema } from "@/lib/validations";
+import { fetchWithRetry } from "@/lib/retry";
 
 export const revalidate = 300; // Cache for 5 minutes
+
+// Fallback weather data for when the API is unavailable
+const FALLBACK_WEATHER = {
+  temp: 14, feels_like: 12, description: "broken clouds", icon: "04d",
+  city: "Amsterdam", country: "NL", humidity: 72, wind_speed: 15,
+};
 
 export async function GET(request: NextRequest) {
   // Rate limiting
@@ -26,17 +33,15 @@ export async function GET(request: NextRequest) {
   const apiKey = process.env.OPENWEATHERMAP_API_KEY;
 
   if (!apiKey || apiKey === "your_openweathermap_key_here") {
-    return NextResponse.json({
-      temp: 14, feels_like: 12, description: "broken clouds", icon: "04d",
-      city: "Amsterdam", country: "NL", humidity: 72, wind_speed: 15,
-    }, {
+    return NextResponse.json(FALLBACK_WEATHER, {
       headers: { "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600" },
     });
   }
 
   try {
-    const res = await fetch(
-      `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${apiKey}&units=metric&lang=nl`
+    const res = await fetchWithRetry(
+      `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${apiKey}&units=metric&lang=nl`,
+      { retryOptions: { maxRetries: 2, initialDelay: 500 } }
     );
 
     if (!res.ok) throw new Error(`Weather API error: ${res.status}`);
@@ -56,6 +61,12 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error("Weather fetch error:", error);
-    return NextResponse.json({ error: "Failed to fetch weather" }, { status: 500 });
+    // Return fallback data instead of error so the DJ can still reference weather
+    return NextResponse.json(FALLBACK_WEATHER, {
+      headers: {
+        "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
+        "X-Weather-Fallback": "true",
+      },
+    });
   }
 }

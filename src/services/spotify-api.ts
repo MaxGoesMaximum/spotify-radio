@@ -1,6 +1,7 @@
 import type { SpotifyTrack } from "@/types";
 import type { StationId } from "@/config/stations";
 import { STATIONS } from "@/config/stations";
+import { fetchWithRetry } from "@/lib/retry";
 
 type Genre = StationId;
 
@@ -40,11 +41,15 @@ export async function searchTracks(
     market: "NL",
   });
 
-  const response = await fetch(`${SPOTIFY_API}/search?${params}`, {
+  const response = await fetchWithRetry(`${SPOTIFY_API}/search?${params}`, {
     headers: { Authorization: `Bearer ${accessToken}` },
+    retryOptions: { maxRetries: 2, initialDelay: 500 },
   });
 
   if (!response.ok) {
+    if (response.status === 401) {
+      throw new SpotifyAuthError("Spotify token expired");
+    }
     console.error("Spotify search failed:", response.status);
     return [];
   }
@@ -65,7 +70,7 @@ export async function playTrack(
 ): Promise<boolean> {
   const maxRetries = 3;
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    const response = await fetch(
+    const response = await fetchWithRetry(
       `${SPOTIFY_API}/me/player/play?device_id=${deviceId}`,
       {
         method: "PUT",
@@ -74,10 +79,15 @@ export async function playTrack(
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ uris: [trackUri] }),
+        retryOptions: { maxRetries: 1, initialDelay: 300 },
       }
     );
 
     if (response.ok || response.status === 204) return true;
+
+    if (response.status === 401) {
+      throw new SpotifyAuthError("Spotify token expired");
+    }
 
     // If we hit 404 Not Found, wait and retry. Spotify backend takes ~1s to sync new devices.
     if (response.status === 404 && attempt < maxRetries) {
@@ -95,22 +105,29 @@ export async function setVolume(
   deviceId: string,
   volumePercent: number
 ): Promise<void> {
-  await fetch(
-    `${SPOTIFY_API}/me/player/volume?volume_percent=${Math.round(
-      volumePercent
-    )}&device_id=${deviceId}`,
-    {
-      method: "PUT",
-      headers: { Authorization: `Bearer ${accessToken}` },
-    }
-  );
+  try {
+    await fetchWithRetry(
+      `${SPOTIFY_API}/me/player/volume?volume_percent=${Math.round(
+        volumePercent
+      )}&device_id=${deviceId}`,
+      {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${accessToken}` },
+        retryOptions: { maxRetries: 1, initialDelay: 200 },
+      }
+    );
+  } catch {
+    // Volume changes are non-critical, silently fail
+  }
 }
 
 export async function pausePlayback(accessToken: string): Promise<void> {
-  await fetch(`${SPOTIFY_API}/me/player/pause`, {
+  const res = await fetchWithRetry(`${SPOTIFY_API}/me/player/pause`, {
     method: "PUT",
     headers: { Authorization: `Bearer ${accessToken}` },
+    retryOptions: { maxRetries: 1, initialDelay: 300 },
   });
+  if (res.status === 401) throw new SpotifyAuthError("Token expired during pause");
 }
 
 export async function resumePlayback(
@@ -119,10 +136,12 @@ export async function resumePlayback(
 ): Promise<void> {
   const maxRetries = 2;
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    const response = await fetch(`${SPOTIFY_API}/me/player/play?device_id=${deviceId}`, {
+    const response = await fetchWithRetry(`${SPOTIFY_API}/me/player/play?device_id=${deviceId}`, {
       method: "PUT",
       headers: { Authorization: `Bearer ${accessToken}` },
+      retryOptions: { maxRetries: 1, initialDelay: 300 },
     });
+    if (response.status === 401) throw new SpotifyAuthError("Token expired during resume");
     if (response.ok || response.status === 204) return;
     if (response.status === 404 && attempt < maxRetries) {
       await new Promise(r => setTimeout(r, 1000));
@@ -136,14 +155,16 @@ export async function saveTrack(
   accessToken: string,
   trackId: string
 ): Promise<boolean> {
-  const response = await fetch(`${SPOTIFY_API}/me/tracks`, {
+  const response = await fetchWithRetry(`${SPOTIFY_API}/me/tracks`, {
     method: "PUT",
     headers: {
       Authorization: `Bearer ${accessToken}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({ ids: [trackId] }),
+    retryOptions: { maxRetries: 1, initialDelay: 300 },
   });
+  if (response.status === 401) throw new SpotifyAuthError("Token expired during saveTrack");
   return response.ok;
 }
 
@@ -151,14 +172,16 @@ export async function removeTrack(
   accessToken: string,
   trackId: string
 ): Promise<boolean> {
-  const response = await fetch(`${SPOTIFY_API}/me/tracks`, {
+  const response = await fetchWithRetry(`${SPOTIFY_API}/me/tracks`, {
     method: "DELETE",
     headers: {
       Authorization: `Bearer ${accessToken}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({ ids: [trackId] }),
+    retryOptions: { maxRetries: 1, initialDelay: 300 },
   });
+  if (response.status === 401) throw new SpotifyAuthError("Token expired during removeTrack");
   return response.ok;
 }
 
@@ -167,12 +190,14 @@ export async function checkSavedTracks(
   trackIds: string[]
 ): Promise<boolean[]> {
   const ids = trackIds.join(",");
-  const response = await fetch(
+  const response = await fetchWithRetry(
     `${SPOTIFY_API}/me/tracks/contains?ids=${ids}`,
     {
       headers: { Authorization: `Bearer ${accessToken}` },
+      retryOptions: { maxRetries: 1, initialDelay: 300 },
     }
   );
+  if (response.status === 401) throw new SpotifyAuthError("Token expired during checkSavedTracks");
   if (!response.ok) return trackIds.map(() => false);
   return response.json();
 }
@@ -205,6 +230,9 @@ export async function getRecommendations(
     seed_artists?: string;
     target_energy?: number;
     target_valence?: number;
+    target_danceability?: number;
+    target_acousticness?: number;
+    target_tempo?: number;
     min_popularity?: number;
     limit?: number;
   }
@@ -218,6 +246,9 @@ export async function getRecommendations(
   if (options.seed_artists) params.append("seed_artists", options.seed_artists);
   if (options.target_energy !== undefined) params.append("target_energy", options.target_energy.toString());
   if (options.target_valence !== undefined) params.append("target_valence", options.target_valence.toString());
+  if (options.target_danceability !== undefined) params.append("target_danceability", options.target_danceability.toString());
+  if (options.target_acousticness !== undefined) params.append("target_acousticness", options.target_acousticness.toString());
+  if (options.target_tempo !== undefined) params.append("target_tempo", options.target_tempo.toString());
   if (options.min_popularity !== undefined) params.append("min_popularity", options.min_popularity.toString());
 
   const response = await fetch(`${SPOTIFY_API}/recommendations?${params}`, {
@@ -225,6 +256,9 @@ export async function getRecommendations(
   });
 
   if (!response.ok) {
+    if (response.status === 401) {
+      throw new SpotifyAuthError("Spotify token expired");
+    }
     console.error("Spotify recommendations failed:", response.status);
     return [];
   }
@@ -294,4 +328,81 @@ function shuffleArray<T>(array: T[]): T[] {
     [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
   }
   return shuffled;
+}
+
+// ── Audio Features API ────────────────────────────────────
+
+export interface AudioFeatures {
+  id: string;
+  energy: number;
+  tempo: number;
+  valence: number;
+  danceability: number;
+  acousticness: number;
+  instrumentalness: number;
+}
+
+/**
+ * Fetch audio features for multiple tracks (up to 100 at a time).
+ * Returns a map of trackId -> AudioFeatures.
+ */
+export async function getAudioFeatures(
+  accessToken: string,
+  trackIds: string[]
+): Promise<Map<string, AudioFeatures>> {
+  const result = new Map<string, AudioFeatures>();
+  if (trackIds.length === 0) return result;
+
+  // Spotify allows max 100 IDs per request
+  const chunks = [];
+  for (let i = 0; i < trackIds.length; i += 100) {
+    chunks.push(trackIds.slice(i, i + 100));
+  }
+
+  for (const chunk of chunks) {
+    try {
+      const ids = chunk.join(",");
+      const response = await fetch(
+        `${SPOTIFY_API}/audio-features?ids=${ids}`,
+        { headers: { Authorization: `Bearer ${accessToken}` } }
+      );
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          throw new SpotifyAuthError("Spotify token expired");
+        }
+        console.error("Audio features fetch failed:", response.status);
+        continue;
+      }
+
+      const data = await response.json();
+      for (const feat of data.audio_features || []) {
+        if (feat && feat.id) {
+          result.set(feat.id, {
+            id: feat.id,
+            energy: feat.energy ?? 0.5,
+            tempo: feat.tempo ?? 120,
+            valence: feat.valence ?? 0.5,
+            danceability: feat.danceability ?? 0.5,
+            acousticness: feat.acousticness ?? 0.3,
+            instrumentalness: feat.instrumentalness ?? 0,
+          });
+        }
+      }
+    } catch (error) {
+      if (error instanceof SpotifyAuthError) throw error;
+      console.error("Audio features error:", error);
+    }
+  }
+
+  return result;
+}
+
+// ── Typed Spotify Auth Error ──────────────────────────────
+
+export class SpotifyAuthError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "SpotifyAuthError";
+  }
 }

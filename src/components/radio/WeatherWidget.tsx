@@ -147,7 +147,7 @@ export function WeatherWidget() {
                 ? "Trek je warme jas aan!"
                 : weather.temp > 25
                   ? "Vergeet je zonnebrand niet!"
-                  : weather.description.toLowerCase().includes("rain")
+                  : weather.description.toLowerCase().includes("regen") || weather.description.toLowerCase().includes("buien")
                     ? "Neem een paraplu mee!"
                     : "Geniet van het weer!"}
             </div>

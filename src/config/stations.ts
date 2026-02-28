@@ -66,6 +66,7 @@ export interface StationConfig {
   colorSecondary: string;
   icon: string;
   searchTerms: string[];
+  seedGenres: string[];  // Spotify-recognized genre seeds for Recommendations API
   yearRange: { min: number; max: number };
   popularityRange: { min: number; max: number };
   rotationWeights: RotationWeights;
@@ -102,6 +103,7 @@ export const STATIONS: StationConfig[] = [
       "Ed Sheeran", "Bruno Mars", "Rihanna", "Justin Bieber",
       "Doja Cat", "SZA", "Tate McRae", "Chappell Roan",
     ],
+    seedGenres: ["pop", "dance pop", "electropop"],
     yearRange: { min: 2018, max: currentYear },
     popularityRange: { min: 55, max: 100 },
     rotationWeights: { current: 0.5, recurrent: 0.3, gold: 0.2 },
@@ -138,6 +140,7 @@ export const STATIONS: StationConfig[] = [
       "Pearl Jam", "Radiohead", "The Killers", "Imagine Dragons",
       "Royal Blood", "Nothing But Thieves", "Greta Van Fleet",
     ],
+    seedGenres: ["rock", "alternative rock", "hard rock"],
     yearRange: { min: 1990, max: currentYear },
     popularityRange: { min: 40, max: 100 },
     rotationWeights: { current: 0.3, recurrent: 0.3, gold: 0.4 },
@@ -173,6 +176,7 @@ export const STATIONS: StationConfig[] = [
       "Chris Brown", "Khalid", "Jorja Smith", "Brent Faiyaz",
       "SZA", "Tyla", "Victoria Monét",
     ],
+    seedGenres: ["r-n-b", "soul", "neo soul"],
     yearRange: { min: 2000, max: currentYear },
     popularityRange: { min: 45, max: 100 },
     rotationWeights: { current: 0.4, recurrent: 0.35, gold: 0.25 },
@@ -209,6 +213,7 @@ export const STATIONS: StationConfig[] = [
       "Robert Glasper", "Herbie Hancock", "Thelonious Monk",
       "Diana Krall", "Jamie Cullum", "Esperanza Spalding",
     ],
+    seedGenres: ["jazz", "smooth jazz", "vocal jazz"],
     yearRange: { min: 1955, max: currentYear },
     popularityRange: { min: 25, max: 100 },
     rotationWeights: { current: 0.2, recurrent: 0.3, gold: 0.5 },
@@ -244,6 +249,7 @@ export const STATIONS: StationConfig[] = [
       "21 Savage", "Metro Boomin", "Future", "Lil Baby",
       "JID", "Denzel Curry", "Baby Keem",
     ],
+    seedGenres: ["hip-hop", "rap", "trap"],
     yearRange: { min: 2010, max: currentYear },
     popularityRange: { min: 50, max: 100 },
     rotationWeights: { current: 0.5, recurrent: 0.3, gold: 0.2 },
@@ -280,6 +286,7 @@ export const STATIONS: StationConfig[] = [
       "Anouk", "Ilse DeLange", "Acda en de Munnik", "Het Goede Doel",
       "Doe Maar", "Golden Earring", "Volumia", "De Dijk",
     ],
+    seedGenres: ["dutch pop", "dutch rock", "nederpop"],
     yearRange: { min: 1985, max: currentYear },
     popularityRange: { min: 20, max: 100 },
     rotationWeights: { current: 0.35, recurrent: 0.3, gold: 0.35 },
@@ -317,6 +324,7 @@ export const STATIONS: StationConfig[] = [
       "De Dijk", "Frank Boeijen", "Acda en de Munnik", "Normaal",
       "Klein Orkest", "Volumia", "Jan Smit", "Lee Towers",
     ],
+    seedGenres: ["dutch pop", "dutch rock", "levenslied"],
     yearRange: { min: 1970, max: 2005 },
     popularityRange: { min: 10, max: 100 },
     rotationWeights: { current: 0.0, recurrent: 0.2, gold: 0.8 },
@@ -353,6 +361,7 @@ export const STATIONS: StationConfig[] = [
       "Men I Trust", "Wallows", "The 1975", "Hozier",
       "Cage the Elephant", "Vampire Weekend", "Glass Animals",
     ],
+    seedGenres: ["indie pop", "indie rock", "dream pop"],
     yearRange: { min: 2010, max: currentYear },
     popularityRange: { min: 30, max: 90 },
     rotationWeights: { current: 0.45, recurrent: 0.35, gold: 0.2 },
@@ -389,6 +398,7 @@ export const STATIONS: StationConfig[] = [
       "Hardwell", "Oliver Heldens", "Sam Feldt", "Lost Frequencies",
       "Nicky Romero", "Don Diablo", "Fedde Le Grand",
     ],
+    seedGenres: ["edm", "house", "progressive house"],
     yearRange: { min: 2015, max: currentYear },
     popularityRange: { min: 45, max: 100 },
     rotationWeights: { current: 0.55, recurrent: 0.3, gold: 0.15 },
@@ -425,6 +435,7 @@ export const STATIONS: StationConfig[] = [
       "Ben Howard", "José González", "Mazzy Star",
       "Zero 7", "Air", "Massive Attack", "Nightmares on Wax",
     ],
+    seedGenres: ["chill", "ambient", "trip-hop"],
     yearRange: { min: 2000, max: currentYear },
     popularityRange: { min: 20, max: 85 },
     rotationWeights: { current: 0.3, recurrent: 0.35, gold: 0.35 },

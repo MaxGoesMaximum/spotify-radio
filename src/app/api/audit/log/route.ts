@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { rateLimit, rateLimitHeaders } from "@/lib/rate-limit";
+import { auditLogSchema } from "@/lib/validations";
 
 /**
  * POST /api/audit/log — Audit logging for security events
@@ -16,12 +17,19 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
+    const parsed = auditLogSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "Invalid input", details: parsed.error.flatten() },
+        { status: 400 }
+      );
+    }
 
     await prisma.auditLog.create({
       data: {
-        action: body.action || "unknown",
-        details: body.details || null,
-        userId: body.userId || null,
+        action: parsed.data.action,
+        details: parsed.data.details || null,
+        userId: parsed.data.userId || null,
         ip,
       },
     });

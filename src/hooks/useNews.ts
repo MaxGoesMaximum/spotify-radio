@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useCallback, useRef } from "react";
+import { useEffect, useCallback, useRef, useState } from "react";
 import { useRadioStore } from "@/store/radio-store";
 
 export function useNews() {
@@ -8,6 +8,8 @@ export function useNews() {
   const news = useRadioStore((s) => s.news);
   const setNews = useRadioStore((s) => s.setNews);
 
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
   const activeRequest = useRef<Promise<void> | null>(null);
 
   const fetchNews = useCallback(async () => {
@@ -20,6 +22,9 @@ export function useNews() {
 
     if (activeRequest.current) return activeRequest.current;
 
+    setIsLoading(true);
+    setError(null);
+
     const request = (async () => {
       try {
         const city = weather?.city || "Netherlands";
@@ -27,11 +32,16 @@ export function useNews() {
         if (res.ok) {
           const data = await res.json();
           setNews(data.articles || []);
+          setError(null);
+        } else {
+          setError(`News API returned ${res.status}`);
         }
-      } catch (error) {
-        console.error("Failed to fetch news:", error);
+      } catch (err) {
+        console.error("Failed to fetch news:", err);
+        setError("Failed to fetch news");
       } finally {
         activeRequest.current = null;
+        setIsLoading(false);
       }
     })();
 
@@ -46,5 +56,5 @@ export function useNews() {
     return () => clearInterval(interval);
   }, [fetchNews]);
 
-  return news;
+  return { news, error, isLoading, refetch: fetchNews };
 }

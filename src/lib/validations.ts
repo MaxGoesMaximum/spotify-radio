@@ -65,3 +65,10 @@ export const paginationSchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(20),
 });
+
+// --- Audit Log ---
+export const auditLogSchema = z.object({
+  action: z.string().min(1).max(100),
+  details: z.string().max(1000).nullable().optional(),
+  userId: z.string().max(100).nullable().optional(),
+});

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef } from "react";
 import { useRadioStore } from "@/store/radio-store";
-import { playTrack } from "@/services/spotify-api";
+import { playTrack, SpotifyAuthError } from "@/services/spotify-api";
 import {
   generateScript,
   generateMultiSegment,
@@ -21,7 +21,10 @@ import {
   resetScheduler,
 } from "@/services/dj/scheduler";
 
-export function useRadioEngine(accessToken: string | undefined) {
+export function useRadioEngine(
+  accessToken: string | undefined,
+  onAuthError?: () => void
+) {
   const store = useRadioStore();
   const isProcessingRef = useRef(false);
   const hasStartedRef = useRef(false);
@@ -150,67 +153,82 @@ export function useRadioEngine(accessToken: string | undefined) {
         preloadTTS(preloadText, station.djProfile.voice, station.djProfile.rate, station.djProfile.pitch).catch(() => { });
       }
     } catch (error) {
-      console.error("Radio engine error:", error);
+      if (error instanceof SpotifyAuthError) {
+        console.warn("[RadioEngine] Token expired, triggering refresh...");
+        onAuthError?.();
+      } else {
+        console.error("Radio engine error:", error);
+      }
     } finally {
       isProcessingRef.current = false;
     }
-  }, [accessToken, store, station]);
+  }, [accessToken, store, station, onAuthError]);
 
   const startRadio = useCallback(async () => {
     if (!accessToken || !store.deviceId || hasStartedRef.current) return;
     hasStartedRef.current = true;
     store.setLoading(true);
 
-    // Select first track via smart selector
-    const firstTrack = await selectNextTrack(
-      store.currentGenre,
-      accessToken
-    );
-
-    if (firstTrack) {
-      store.setAnnouncerSpeaking(true);
-      store.setCurrentSegment("intro");
-
-      const introScript = generateScript("intro", { nextTrack: firstTrack, stationId: store.currentGenre });
-      try {
-        const { speak } = await import("@/services/speech");
-        await speak(
-          introScript,
-          0.9,
-          station.djProfile.voice,
-          station.djProfile.rate,
-          station.djProfile.pitch
-        );
-      } catch {
-        // Continue without speech
-      }
-
-      store.setAnnouncerSpeaking(false);
-      store.setCurrentSegment(null);
-      store.setSongsUntilAnnouncement(
-        getSongsUntilAnnouncement(store.currentGenre)
+    try {
+      // Select first track via smart selector
+      const firstTrack = await selectNextTrack(
+        store.currentGenre,
+        accessToken
       );
 
-      // IMPORTANT: fetch the absolute latest device_id from State because the
-      // player might have re-initialized asynchronously while we were speaking!
-      const activeDeviceId = useRadioStore.getState().deviceId;
-      if (!activeDeviceId) return;
+      if (firstTrack) {
+        store.setAnnouncerSpeaking(true);
+        store.setCurrentSegment("intro");
 
-      const success = await playTrack(accessToken, activeDeviceId, firstTrack.uri);
+        const introScript = generateScript("intro", { nextTrack: firstTrack, stationId: store.currentGenre });
+        try {
+          const { speak } = await import("@/services/speech");
+          await speak(
+            introScript,
+            0.9,
+            station.djProfile.voice,
+            station.djProfile.rate,
+            station.djProfile.pitch
+          );
+        } catch {
+          // Continue without speech
+        }
 
-      if (success) {
-        store.setCurrentTrack(firstTrack);
-        store.setPlaying(true);
-        store.incrementSessionTrackCount();
-      } else {
-        console.error("Critical: Initial Spotify playback failed. 404 Race Condition?");
-        store.setLoading(false);
-        hasStartedRef.current = false; // Allow manual retry by unsetting the lock
+        store.setAnnouncerSpeaking(false);
+        store.setCurrentSegment(null);
+        store.setSongsUntilAnnouncement(
+          getSongsUntilAnnouncement(store.currentGenre)
+        );
+
+        // IMPORTANT: fetch the absolute latest device_id from State because the
+        // player might have re-initialized asynchronously while we were speaking!
+        const activeDeviceId = useRadioStore.getState().deviceId;
+        if (!activeDeviceId) return;
+
+        const success = await playTrack(accessToken, activeDeviceId, firstTrack.uri);
+
+        if (success) {
+          store.setCurrentTrack(firstTrack);
+          store.setPlaying(true);
+          store.incrementSessionTrackCount();
+        } else {
+          console.error("Critical: Initial Spotify playback failed. 404 Race Condition?");
+          store.setLoading(false);
+          hasStartedRef.current = false; // Allow manual retry by unsetting the lock
+        }
       }
+    } catch (error) {
+      if (error instanceof SpotifyAuthError) {
+        console.warn("[RadioEngine] Token expired during startup, triggering refresh...");
+        onAuthError?.();
+      } else {
+        console.error("Radio start error:", error);
+      }
+      hasStartedRef.current = false;
     }
 
     store.setLoading(false);
-  }, [accessToken, store.deviceId, station]);
+  }, [accessToken, store.deviceId, station, onAuthError]);
 
   const skipTrack = useCallback(() => {
     // Track the skip for taste profile
@@ -239,59 +257,69 @@ export function useRadioEngine(accessToken: string | undefined) {
       isProcessingRef.current = false;
 
       if (accessToken && store.deviceId) {
-        const newStation = getStation(genre);
+        try {
+          const newStation = getStation(genre);
 
-        // Select first track for the new station
-        const firstTrack = await selectNextTrack(genre, accessToken);
+          // Select first track for the new station
+          const firstTrack = await selectNextTrack(genre, accessToken);
 
-        if (firstTrack) {
-          store.setAnnouncerSpeaking(true);
-          store.setCurrentSegment("station_id");
+          if (firstTrack) {
+            store.setAnnouncerSpeaking(true);
+            store.setCurrentSegment("station_id");
 
-          try {
-            const stationScript = generateScript("station_id", { stationId: genre });
-            const transitionScript = generateScript("between", {
-              nextTrack: firstTrack,
-              stationId: genre,
-            });
+            try {
+              const stationScript = generateScript("station_id", { stationId: genre });
+              const transitionScript = generateScript("between", {
+                nextTrack: firstTrack,
+                stationId: genre,
+              });
 
-            await audioCoordinator.playSegments(
-              [{ text: stationScript }, { text: transitionScript }],
-              accessToken,
-              store.deviceId!,
-              store.volume,
-              {
-                voice: newStation.djProfile.voice,
-                rate: newStation.djProfile.rate,
-                pitch: newStation.djProfile.pitch,
-              }
+              await audioCoordinator.playSegments(
+                [{ text: stationScript }, { text: transitionScript }],
+                accessToken,
+                store.deviceId!,
+                store.volume,
+                {
+                  voice: newStation.djProfile.voice,
+                  rate: newStation.djProfile.rate,
+                  pitch: newStation.djProfile.pitch,
+                }
+              );
+            } catch { }
+
+            store.setAnnouncerSpeaking(false);
+            store.setCurrentSegment(null);
+            store.setSongsUntilAnnouncement(
+              getSongsUntilAnnouncement(genre)
             );
-          } catch { }
 
-          store.setAnnouncerSpeaking(false);
-          store.setCurrentSegment(null);
-          store.setSongsUntilAnnouncement(
-            getSongsUntilAnnouncement(genre)
-          );
-
-          await playTrack(accessToken, store.deviceId, firstTrack.uri);
-          store.setCurrentTrack(firstTrack);
-          store.setPlaying(true);
-          store.incrementSessionTrackCount();
+            await playTrack(accessToken, store.deviceId, firstTrack.uri);
+            store.setCurrentTrack(firstTrack);
+            store.setPlaying(true);
+            store.incrementSessionTrackCount();
+          }
+        } catch (error) {
+          if (error instanceof SpotifyAuthError) {
+            console.warn("[RadioEngine] Token expired during genre change, triggering refresh...");
+            onAuthError?.();
+          } else {
+            console.error("Genre change error:", error);
+          }
         }
       }
     },
-    [accessToken, store]
+    [accessToken, store, onAuthError]
   );
 
   // Listener count fluctuation
   useEffect(() => {
     const interval = setInterval(() => {
+      const current = useRadioStore.getState().listenerCount;
       const delta = Math.floor(Math.random() * 11) - 5;
-      store.setListenerCount(Math.max(800, store.listenerCount + delta));
+      store.setListenerCount(Math.max(800, current + delta));
     }, 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return { startRadio, playNextTrack, skipTrack, changeGenre };
 }

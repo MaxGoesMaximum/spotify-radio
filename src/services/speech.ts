@@ -7,6 +7,7 @@ let currentAudio: HTMLAudioElement | null = null;
 // Client-side blob URL cache
 const blobCache = new Map<string, { url: string; timestamp: number }>();
 const BLOB_CACHE_TTL = 20 * 60 * 1000; // 20 minutes
+const MAX_BLOB_CACHE_SIZE = 50;
 
 function cleanBlobCache() {
   const now = Date.now();
@@ -15,6 +16,15 @@ function cleanBlobCache() {
       URL.revokeObjectURL(value.url);
       blobCache.delete(key);
     }
+  }
+  // Evict oldest entries if over size cap
+  while (blobCache.size > MAX_BLOB_CACHE_SIZE) {
+    const oldestKey = blobCache.keys().next().value;
+    if (oldestKey) {
+      const entry = blobCache.get(oldestKey);
+      if (entry) URL.revokeObjectURL(entry.url);
+      blobCache.delete(oldestKey);
+    } else break;
   }
 }
 
@@ -35,10 +45,13 @@ async function fetchTTSAudio(
   const cached = blobCache.get(cacheKey);
   if (cached) return cached.url;
 
+  // Auto-detect SSML content
+  const hasSSML = text.includes("<break") || text.includes("<emphasis") || text.includes("<prosody");
+
   const response = await fetch("/api/tts", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ text, voice, rate, pitch }),
+    body: JSON.stringify({ text, voice, rate, pitch, ssml: hasSSML || undefined }),
   });
 
   if (!response.ok) {

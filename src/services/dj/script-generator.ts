@@ -1,13 +1,66 @@
 // ═══════════════════════════════════════════════════════════════
-//  SCRIPT GENERATOR — Per-station, tone-aware DJ scripts
+//  SCRIPT GENERATOR — Per-station, tone-aware DJ scripts with SSML
 // ═══════════════════════════════════════════════════════════════
 
 import type { SpotifyTrack, WeatherData, NewsArticle } from "@/types";
 import { getStation, getCurrentShow, type StationId, type DJTone } from "@/config/stations";
-import { getDJName, getInterjection } from "./voice-mapper";
+import { getDJName, getInterjection, getProsodyStyle, type ProsodyStyle } from "./voice-mapper";
 import { getHolidayDJLine } from "./holidays";
 import { getGreeting } from "@/lib/utils";
 import type { ScriptType } from "@/services/dj-scripts";
+
+// ── SSML Prosody Helpers ────────────────────────────────────
+
+/**
+ * Insert a timed pause (SSML break tag)
+ */
+function pause(ms: number): string {
+  return `<break time="${ms}ms"/>`;
+}
+
+/**
+ * Wrap text in emphasis for proper nouns (artist names, song titles, station names)
+ */
+function emph(text: string, level: "moderate" | "strong" | "reduced" = "moderate"): string {
+  return `<emphasis level="${level}">${text}</emphasis>`;
+}
+
+/**
+ * Add a subtle breath/silence mark for natural speech rhythm
+ */
+function breath(): string {
+  return `<break strength="weak"/>`;
+}
+
+/**
+ * Apply prosody-aware formatting to a complete script.
+ * Adds SSML breaks, emphasis, and breath marks based on the station's prosody style.
+ */
+function applyProsody(parts: string[], style: ProsodyStyle, tone: DJTone): string {
+  const result: string[] = [];
+
+  for (let i = 0; i < parts.length; i++) {
+    let segment = parts[i];
+
+    // Add humanization for appropriate tones
+    if (tone !== "chill" && tone !== "smooth") {
+      segment = humanize(segment, tone);
+    }
+
+    result.push(segment);
+
+    // Add inter-segment pause (between conceptual blocks like "intro" + "weather" + "transition")
+    if (i < parts.length - 1) {
+      // Occasional breath mark between segments
+      if (Math.random() < style.breathFrequency) {
+        result.push(breath());
+      }
+      result.push(pause(style.sentencePauseMs));
+    }
+  }
+
+  return result.join(" ");
+}
 
 // ── Tone-specific phrase banks ──────────────────────────────
 
@@ -182,21 +235,13 @@ const GENRE_FUN_FACTS: Record<string, string[]> = {
 // ── Dutch humanization helpers ──────────────────────────────
 
 const DUTCH_FILLERS = ["eh", "nou", "zeg", "ja", "tja"];
-const DUTCH_DIMINUTIVES: Record<string, string> = {
-  nummer: "nummertje",
-  moment: "momentje",
-  liedje: "liedje",
-  pauze: "pauzeke",
-};
 
 /**
- * Add natural Dutch filler words and diminutives to make speech more human
+ * Add natural Dutch filler words to make speech more human
  */
 function humanize(text: string, tone: DJTone): string {
-  // Only add fillers to warmer/chattier tones
   if (tone === "chill" || tone === "smooth") return text;
 
-  // Occasionally insert a filler word after a period
   const sentences = text.split(". ");
   const result = sentences.map((s, i) => {
     if (i > 0 && Math.random() < 0.2) {
@@ -250,6 +295,20 @@ function translateWeather(desc: string): string {
   return t[desc.toLowerCase()] || desc;
 }
 
+// ── SSML-enhanced track/artist name formatting ──────────────
+
+function formatArtistName(name: string, style: ProsodyStyle): string {
+  return emph(name, style.emphasisLevel);
+}
+
+function formatTrackName(name: string, style: ProsodyStyle): string {
+  return emph(name, style.emphasisLevel);
+}
+
+function formatTrackCredit(track: SpotifyTrack, style: ProsodyStyle): string {
+  return `${formatTrackName(track.name, style)} van ${formatArtistName(track.artists[0].name, style)}`;
+}
+
 // ── Main script generation function ─────────────────────────
 
 export interface ScriptOptions {
@@ -269,6 +328,7 @@ export function generateStationScript(
   const djName = getDJName(stationId);
   const show = getCurrentShow(station);
   const phrases = TONE_PHRASES[tone];
+  const style = getProsodyStyle(stationId);
   const { previousTrack, nextTrack, weather, news } = options;
 
   const parts: string[] = [];
@@ -276,14 +336,13 @@ export function generateStationScript(
   switch (type) {
     case "intro": {
       parts.push(
-        `${getGreeting()}! Je luistert naar ${show.name} op ${station.label} met ${djName}.`
+        `${getGreeting()}! ${pause(200)} Je luistert naar ${emph(show.name, style.emphasisLevel)} op ${emph(station.label, style.emphasisLevel)} met ${emph(djName, style.emphasisLevel)}.`
       );
       parts.push(
-        `Het is ${getTimeString()} en we hebben weer geweldige muziek voor je klaarstaan.`
+        `Het is ${getTimeString()} ${pause(150)} en we hebben weer geweldige muziek voor je klaarstaan.`
       );
       parts.push(pick(TIME_ADVICE[getTimeOfDayKey()]));
 
-      // Holiday-aware greeting
       const holidayLine = getHolidayDJLine();
       if (holidayLine) {
         parts.push(holidayLine);
@@ -291,12 +350,12 @@ export function generateStationScript(
 
       if (Math.random() < 0.2) {
         const genreFacts = GENRE_FUN_FACTS[stationId] || GENRE_FUN_FACTS.default;
-        parts.push(`Even een leuk weetje tussendoor: ${pick(genreFacts)}`);
+        parts.push(`Even een leuk weetje tussendoor: ${pause(200)} ${pick(genreFacts)}`);
       }
 
       if (nextTrack) {
         parts.push(
-          `We beginnen met ${nextTrack.name} van ${nextTrack.artists[0].name}. ${getInterjection(stationId)}`
+          `We beginnen met ${formatTrackCredit(nextTrack, style)}. ${pause(300)} ${getInterjection(stationId)}`
         );
       }
       break;
@@ -305,24 +364,22 @@ export function generateStationScript(
     case "between": {
       if (previousTrack) {
         parts.push(
-          `${pick(phrases.filler)} Dat was ${previousTrack.name} van ${previousTrack.artists[0].name}.`
+          `${pick(phrases.filler)} ${pause(250)} Dat was ${formatTrackCredit(previousTrack, style)}.`
         );
       }
 
-      // 30% chance to realistically read the exact time during a normal transition
       if (Math.random() < 0.3) {
-        parts.push(`Het is inmiddels ${getTimeString()} op ${station.label}.`);
+        parts.push(`Het is inmiddels ${getTimeString()} op ${emph(station.label, style.emphasisLevel)}.`);
       }
 
-      // 15% chance to drop a fun fact right in the middle of a transition
       if (Math.random() < 0.15) {
         const genreFacts = GENRE_FUN_FACTS[stationId] || GENRE_FUN_FACTS.default;
-        parts.push(`Wist je dat trouwens? ${pick(genreFacts)}`);
+        parts.push(`${pause(200)} Wist je dat trouwens? ${pick(genreFacts)}`);
       }
 
       if (nextTrack) {
         parts.push(
-          `${pick(phrases.transition)} ${nextTrack.name}, van ${nextTrack.artists[0].name}.`
+          `${pick(phrases.transition)} ${formatTrackCredit(nextTrack, style)}.`
         );
       }
       break;
@@ -330,12 +387,12 @@ export function generateStationScript(
 
     case "weather": {
       if (previousTrack) {
-        parts.push(`Dat was ${previousTrack.name} van ${previousTrack.artists[0].name}.`);
+        parts.push(`Dat was ${formatTrackCredit(previousTrack, style)}.`);
       }
-      parts.push("Even het weer.");
+      parts.push(`${pause(300)} Even het weer.`);
       if (weather) {
         parts.push(
-          `Het is momenteel ${Math.round(weather.temp)} graden in ${weather.city}. ${translateWeather(weather.description)}.`
+          `Het is momenteel ${Math.round(weather.temp)} graden in ${emph(weather.city, style.emphasisLevel)}. ${pause(200)} ${translateWeather(weather.description)}.`
         );
         if (weather.wind_speed > 10) {
           parts.push(
@@ -347,30 +404,30 @@ export function generateStationScript(
       }
       if (nextTrack) {
         parts.push(
-          `Maar eerst, ${pick(phrases.transition).toLowerCase()} ${nextTrack.name} van ${nextTrack.artists[0].name}.`
+          `${pause(300)} Maar eerst, ${pick(phrases.transition).toLowerCase()} ${formatTrackCredit(nextTrack, style)}.`
         );
       }
       break;
     }
 
     case "weather_full": {
-      parts.push("Tijd voor het weerbericht.");
+      parts.push(`${pause(200)} Tijd voor het weerbericht.`);
       if (weather) {
         const temp = Math.round(weather.temp);
         const feels = Math.round(weather.feels_like);
-        parts.push(`Het weerbericht voor ${weather.city} en omgeving.`);
-        parts.push(`Het is momenteel ${temp} graden, en het voelt als ${feels} graden.`);
+        parts.push(`Het weerbericht voor ${emph(weather.city, style.emphasisLevel)} en omgeving.`);
+        parts.push(`Het is momenteel ${temp} graden, ${pause(150)} en het voelt als ${feels} graden.`);
         parts.push(`${translateWeather(weather.description)}.`);
         parts.push(`De luchtvochtigheid is ${weather.humidity} procent.`);
         if (weather.wind_speed > 0) {
           parts.push(`De wind waait met ${Math.round(weather.wind_speed)} kilometer per uur.`);
         }
-        if (temp < 5) parts.push("Trek je warme jas aan vandaag!");
-        else if (temp > 25) parts.push("Vergeet je zonnebrand niet!");
+        if (temp < 5) parts.push(`${pause(200)} Trek je warme jas aan vandaag!`);
+        else if (temp > 25) parts.push(`${pause(200)} Vergeet je zonnebrand niet!`);
         else if (weather.description.toLowerCase().includes("rain")) {
-          parts.push("Neem een paraplu mee voor de zekerheid!");
+          parts.push(`${pause(200)} Neem een paraplu mee voor de zekerheid!`);
         }
-        parts.push("Dat was het weerbericht.");
+        parts.push(`${pause(300)} Dat was het weerbericht.`);
       } else {
         parts.push("Helaas is het weerbericht even niet beschikbaar.");
       }
@@ -379,12 +436,12 @@ export function generateStationScript(
 
     case "news": {
       if (previousTrack) {
-        parts.push(`${pick(phrases.filler)} Dat was ${previousTrack.name}.`);
+        parts.push(`${pick(phrases.filler)} Dat was ${formatTrackName(previousTrack.name, style)}.`);
       }
-      parts.push("Even het laatste nieuws.");
+      parts.push(`${pause(300)} Even het laatste nieuws.`);
       if (news && news.length > 0) {
         const article = pick(news);
-        parts.push(`${article.title}.`);
+        parts.push(`${pause(200)} ${article.title}.`);
         if (article.description) {
           const shortDesc = article.description.split(".")[0];
           parts.push(`${shortDesc}.`);
@@ -392,26 +449,26 @@ export function generateStationScript(
       }
       if (nextTrack) {
         parts.push(
-          `En we gaan verder met muziek. ${pick(phrases.transition)} ${nextTrack.name} van ${nextTrack.artists[0].name}.`
+          `${pause(300)} En we gaan verder met muziek. ${pick(phrases.transition)} ${formatTrackCredit(nextTrack, style)}.`
         );
       }
       break;
     }
 
     case "news_full": {
-      parts.push("Het is tijd voor het nieuws.");
-      parts.push(`Het nieuws van ${getTimeString()} op ${station.label}.`);
+      parts.push(`${pause(200)} Het is tijd voor het nieuws.`);
+      parts.push(`Het nieuws van ${getTimeString()} op ${emph(station.label, style.emphasisLevel)}.`);
       if (news && news.length > 0) {
         const headlines = news.slice(0, 3);
         const ordinals = ["Eerste bericht", "Verder in het nieuws", "En tot slot"];
         headlines.forEach((article, idx) => {
-          parts.push(`${ordinals[idx] || "Ook"}: ${article.title}.`);
+          parts.push(`${pause(350)} ${ordinals[idx] || "Ook"}: ${article.title}.`);
           if (article.description) {
             const shortDesc = article.description.split(".").slice(0, 2).join(".").trim();
             if (shortDesc) parts.push(`${shortDesc}.`);
           }
         });
-        parts.push(`Dat was het nieuws op ${station.label}.`);
+        parts.push(`${pause(300)} Dat was het nieuws op ${emph(station.label, style.emphasisLevel)}.`);
       } else {
         parts.push("Er is op dit moment geen nieuws beschikbaar.");
       }
@@ -420,29 +477,28 @@ export function generateStationScript(
 
     case "time": {
       parts.push(
-        `Het is ${getTimeString()} op ${station.label}. ${pick(phrases.filler)}`
+        `Het is ${getTimeString()} op ${emph(station.label, style.emphasisLevel)}. ${pause(200)} ${pick(phrases.filler)}`
       );
       parts.push(pick(TIME_ADVICE[getTimeOfDayKey()]));
       if (nextTrack) {
-        parts.push(`${pick(phrases.transition)} ${nextTrack.name} van ${nextTrack.artists[0].name}.`);
+        parts.push(`${pick(phrases.transition)} ${formatTrackCredit(nextTrack, style)}.`);
       }
       break;
     }
 
     case "station_id": {
       const template = pick(phrases.stationId);
-      parts.push(template.replace("{station}", station.label));
+      parts.push(template.replace("{station}", emph(station.label, style.emphasisLevel)));
       break;
     }
 
     case "fun_fact": {
       parts.push(pick(phrases.funFact));
-      // Use genre-specific facts if available, else default
       const genreFacts = GENRE_FUN_FACTS[stationId] || GENRE_FUN_FACTS.default;
-      parts.push(pick(genreFacts));
+      parts.push(`${pause(200)} ${pick(genreFacts)}`);
       if (nextTrack) {
         parts.push(
-          `Maar we gaan weer verder met muziek! ${pick(phrases.transition)} ${nextTrack.name} van ${nextTrack.artists[0].name}.`
+          `${pause(300)} Maar we gaan weer verder met muziek! ${pick(phrases.transition)} ${formatTrackCredit(nextTrack, style)}.`
         );
       }
       break;
@@ -451,10 +507,10 @@ export function generateStationScript(
     case "song_intro": {
       if (nextTrack) {
         const intros = [
-          `En nu, speciaal voor jullie, ${nextTrack.name} van ${nextTrack.artists[0].name}. Van het album ${nextTrack.album.name}. ${getInterjection(stationId)}`,
-          `Hier is ie dan, ${nextTrack.artists[0].name} met ${nextTrack.name}!`,
-          `${pick(phrases.filler)} ${nextTrack.artists[0].name}, ${nextTrack.name}!`,
-          `Dit nummer doet het geweldig, hier is ${nextTrack.artists[0].name} met ${nextTrack.name}!`,
+          `En nu, ${pause(150)} speciaal voor jullie, ${formatTrackCredit(nextTrack, style)}. ${pause(200)} Van het album ${emph(nextTrack.album.name, style.emphasisLevel)}. ${getInterjection(stationId)}`,
+          `Hier is ie dan, ${pause(150)} ${formatArtistName(nextTrack.artists[0].name, style)} met ${formatTrackName(nextTrack.name, style)}!`,
+          `${pick(phrases.filler)} ${pause(200)} ${formatArtistName(nextTrack.artists[0].name, style)}, ${formatTrackName(nextTrack.name, style)}!`,
+          `Dit nummer doet het geweldig, ${pause(150)} hier is ${formatArtistName(nextTrack.artists[0].name, style)} met ${formatTrackName(nextTrack.name, style)}!`,
         ];
         parts.push(pick(intros));
       }
@@ -463,10 +519,10 @@ export function generateStationScript(
 
     case "jingle": {
       const jingles = [
-        `${station.label}!`,
-        `${station.label}, ${station.tagline.toLowerCase()}`,
-        `Non-stop muziek op ${station.label}!`,
-        `${station.label}, altijd aan!`,
+        `${emph(station.label, "strong")}!`,
+        `${emph(station.label, "strong")}, ${station.tagline.toLowerCase()}`,
+        `Non-stop muziek op ${emph(station.label, "strong")}!`,
+        `${emph(station.label, "strong")}, altijd aan!`,
       ];
       parts.push(pick(jingles));
       break;
@@ -475,12 +531,11 @@ export function generateStationScript(
     case "outro": {
       const todPart = getTimeOfDayKey() === "morning" ? "dag" : getTimeOfDayKey() === "night" ? "nacht" : "avond";
       parts.push(
-        `Dat was het weer voor nu op ${station.label}. Bedankt voor het luisteren en tot de volgende keer! ${djName} wenst je een fijne ${todPart}!`
+        `Dat was het weer voor nu op ${emph(station.label, style.emphasisLevel)}. ${pause(300)} Bedankt voor het luisteren en tot de volgende keer! ${pause(200)} ${emph(djName, style.emphasisLevel)} wenst je een fijne ${todPart}!`
       );
       break;
     }
   }
 
-  const rawText = parts.join(" ");
-  return humanize(rawText, tone);
+  return applyProsody(parts, style, tone);
 }

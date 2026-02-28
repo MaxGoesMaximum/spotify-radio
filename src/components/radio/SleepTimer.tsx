@@ -15,6 +15,7 @@ export function SleepTimer({ accessToken }: SleepTimerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [remaining, setRemaining] = useState<number | null>(null);
   const sleepTimerEnd = useRadioStore((s) => s.sleepTimerEnd);
+  const sleepTimerDuration = useRadioStore((s) => s.sleepTimerDuration);
   const setSleepTimer = useRadioStore((s) => s.setSleepTimer);
   const setPlaying = useRadioStore((s) => s.setPlaying);
   const volume = useRadioStore((s) => s.volume);
@@ -36,16 +37,17 @@ export function SleepTimer({ accessToken }: SleepTimerProps) {
 
   const setTimer = useCallback(
     (minutes: number) => {
-      const endTime = Date.now() + minutes * 60 * 1000;
+      const durationMs = minutes * 60 * 1000;
+      const endTime = Date.now() + durationMs;
       originalVolumeRef.current = volume;
-      setSleepTimer(endTime);
+      setSleepTimer(endTime, durationMs);
       setIsOpen(false);
     },
     [setSleepTimer, volume]
   );
 
   const clearTimer = useCallback(() => {
-    setSleepTimer(null);
+    setSleepTimer(null, null);
     setRemaining(null);
     // Restore original volume
     setVolume(originalVolumeRef.current);
@@ -71,7 +73,7 @@ export function SleepTimer({ accessToken }: SleepTimerProps) {
       }
 
       if (left <= 0) {
-        setSleepTimer(null);
+        setSleepTimer(null, null);
         setRemaining(null);
         setVolume(originalVolumeRef.current); // Restore for next session
         pausePlayback(accessToken).catch(() => { });
@@ -91,8 +93,8 @@ export function SleepTimer({ accessToken }: SleepTimerProps) {
     return `${minutes}:${seconds.toString().padStart(2, "0")}`;
   };
 
-  const progressPercent = remaining !== null && sleepTimerEnd
-    ? 1 - (remaining / (sleepTimerEnd - (sleepTimerEnd - (remaining || 1))))
+  const progressPercent = remaining !== null && sleepTimerDuration
+    ? 1 - (remaining / sleepTimerDuration)
     : 0;
 
   return (
@@ -102,8 +104,8 @@ export function SleepTimer({ accessToken }: SleepTimerProps) {
         whileHover={{ scale: 1.04 }}
         whileTap={{ scale: 0.96 }}
         className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border transition-all ${remaining !== null
-            ? "bg-radio-accent/10 border-radio-accent/30 text-radio-accent"
-            : "bg-white/[0.04] border-white/[0.08] text-white/40 hover:bg-white/[0.08] hover:text-white/60"
+          ? "bg-radio-accent/10 border-radio-accent/30 text-radio-accent"
+          : "bg-white/[0.04] border-white/[0.08] text-white/40 hover:bg-white/[0.08] hover:text-white/60"
           }`}
       >
         <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>

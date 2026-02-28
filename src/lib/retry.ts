@@ -8,6 +8,8 @@ interface RetryOptions {
     initialDelay?: number;
     maxDelay?: number;
     backoffFactor?: number;
+    /** Custom predicate to decide if an error should trigger a retry */
+    shouldRetry?: (error: Error) => boolean;
     onRetry?: (attempt: number, error: Error) => void;
 }
 
@@ -20,6 +22,7 @@ export async function withRetry<T>(
         initialDelay = 1000,
         maxDelay = 10000,
         backoffFactor = 2,
+        shouldRetry,
         onRetry,
     } = options;
 
@@ -32,6 +35,9 @@ export async function withRetry<T>(
             lastError = error instanceof Error ? error : new Error(String(error));
 
             if (attempt === maxRetries) break;
+
+            // If a shouldRetry predicate is provided, check it
+            if (shouldRetry && !shouldRetry(lastError)) break;
 
             const delay = Math.min(
                 initialDelay * Math.pow(backoffFactor, attempt),
@@ -51,6 +57,16 @@ export async function withRetry<T>(
 }
 
 /**
+ * Check if an HTTP status code is retryable.
+ * 401/403 are NOT retryable (auth issues won't self-heal).
+ * 429 and 5xx ARE retryable.
+ */
+function isRetryableStatus(status: number): boolean {
+    if (status === 401 || status === 403) return false;
+    return status >= 500 || status === 429;
+}
+
+/**
  * Fetch with automatic retry
  */
 export async function fetchWithRetry(
@@ -62,8 +78,7 @@ export async function fetchWithRetry(
     return withRetry(async () => {
         const response = await fetch(url, fetchOptions);
 
-        // Retry on 5xx server errors and 429 rate limit
-        if (response.status >= 500 || response.status === 429) {
+        if (!response.ok && isRetryableStatus(response.status)) {
             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
 

@@ -1,12 +1,15 @@
 "use client";
 
-import { useEffect, useCallback } from "react";
+import { useEffect, useCallback, useState } from "react";
 import { useRadioStore } from "@/store/radio-store";
 
 export function useWeather() {
   const location = useRadioStore((s) => s.location);
   const weather = useRadioStore((s) => s.weather);
   const setWeather = useRadioStore((s) => s.setWeather);
+
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   const fetchWeather = useCallback(async () => {
     if (!location) return;
@@ -18,6 +21,9 @@ export function useWeather() {
       return;
     }
 
+    setIsLoading(true);
+    setError(null);
+
     try {
       const res = await fetch(
         `/api/weather?lat=${location.lat}&lon=${location.lon}`
@@ -25,9 +31,15 @@ export function useWeather() {
       if (res.ok) {
         const data = await res.json();
         setWeather(data);
+        setError(null);
+      } else {
+        setError(`Weather API returned ${res.status}`);
       }
-    } catch (error) {
-      console.error("Failed to fetch weather:", error);
+    } catch (err) {
+      console.error("Failed to fetch weather:", err);
+      setError("Failed to fetch weather data");
+    } finally {
+      setIsLoading(false);
     }
   }, [location, setWeather]);
 
@@ -38,5 +50,5 @@ export function useWeather() {
     return () => clearInterval(interval);
   }, [fetchWeather]);
 
-  return weather;
+  return { weather, error, isLoading, refetch: fetchWeather };
 }

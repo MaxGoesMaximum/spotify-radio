@@ -78,6 +78,7 @@ interface RadioStore {
 
   // Sleep Timer
   sleepTimerEnd: number | null;
+  sleepTimerDuration: number | null; // original duration in ms
 
   // Immersion
   listenerCount: number;
@@ -140,7 +141,7 @@ interface RadioStore {
   addToHistory: (track: SpotifyTrack, genre: Genre) => void;
   toggleFavorite: (trackId: string) => void;
   setDJVoice: (voice: DJVoice) => void;
-  setSleepTimer: (endTime: number | null) => void;
+  setSleepTimer: (endTime: number | null, durationMs?: number | null) => void;
   setListenerCount: (count: number) => void;
   incrementSkipCount: () => void;
   incrementSessionTrackCount: () => void;
@@ -170,6 +171,7 @@ export const useRadioStore = create<RadioStore>((set, get) => ({
   songHistory: [],
   favorites: loadPersistedFavorites(),
   sleepTimerEnd: null,
+  sleepTimerDuration: null,
   listenerCount: Math.floor(Math.random() * 500) + 1000,
   skipCount: 0,
   sessionTrackCount: 0,
@@ -258,7 +260,7 @@ export const useRadioStore = create<RadioStore>((set, get) => ({
     set({ djVoice: voice });
     debouncedSavePreferences({ djVoice: voice });
   },
-  setSleepTimer: (endTime) => set({ sleepTimerEnd: endTime }),
+  setSleepTimer: (endTime, durationMs) => set({ sleepTimerEnd: endTime, sleepTimerDuration: durationMs ?? null }),
   setListenerCount: (count) => set({ listenerCount: count }),
   incrementSkipCount: () => set((s) => ({ skipCount: s.skipCount + 1 })),
   incrementSessionTrackCount: () => set((s) => ({ sessionTrackCount: s.sessionTrackCount + 1 })),

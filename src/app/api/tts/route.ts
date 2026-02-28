@@ -14,6 +14,65 @@ export const dynamic = "force-dynamic";
 const cache = new Map<string, { buffer: Buffer; timestamp: number }>();
 const CACHE_TTL = 30 * 60 * 1000; // 30 minutes
 
+// ── Circuit Breaker ─────────────────────────────────────────
+// Prevents spawning failing TTS workers when the service is down
+
+interface CircuitState {
+  failureCount: number;
+  lastFailureTime: number;
+  isOpen: boolean;
+  openedAt: number;
+}
+
+const circuit: CircuitState = {
+  failureCount: 0,
+  lastFailureTime: 0,
+  isOpen: false,
+  openedAt: 0,
+};
+
+const CIRCUIT_FAILURE_THRESHOLD = 3;  // Open after 3 consecutive failures
+const CIRCUIT_FAILURE_WINDOW = 5 * 60 * 1000; // 5 minute failure window
+const CIRCUIT_RESET_TIMEOUT = 30 * 1000; // 30 second cooldown before retry
+
+function recordCircuitFailure() {
+  const now = Date.now();
+  // Reset counter if last failure was outside the window
+  if (now - circuit.lastFailureTime > CIRCUIT_FAILURE_WINDOW) {
+    circuit.failureCount = 0;
+  }
+  circuit.failureCount++;
+  circuit.lastFailureTime = now;
+
+  if (circuit.failureCount >= CIRCUIT_FAILURE_THRESHOLD) {
+    circuit.isOpen = true;
+    circuit.openedAt = now;
+    console.warn(`TTS circuit breaker OPENED after ${circuit.failureCount} failures`);
+  }
+}
+
+function recordCircuitSuccess() {
+  circuit.failureCount = 0;
+  circuit.isOpen = false;
+}
+
+function isCircuitOpen(): boolean {
+  if (!circuit.isOpen) return false;
+  // Auto-close after cooldown period (half-open: allow one request through)
+  if (Date.now() - circuit.openedAt > CIRCUIT_RESET_TIMEOUT) {
+    circuit.isOpen = false;
+    circuit.failureCount = 0;
+    console.info("TTS circuit breaker CLOSED (cooldown expired)");
+    return false;
+  }
+  return true;
+}
+
+// ── In-flight Request Deduplication ─────────────────────────
+// Prevents duplicate TTS synthesis for identical concurrent requests
+
+const inFlight = new Map<string, Promise<Buffer>>();
+
 function hashText(text: string, voice: string, rate?: string, pitch?: string): string {
   let hash = 0;
   const str = `${voice}:${rate ?? ""}:${pitch ?? ""}:${text}`;
@@ -35,18 +94,24 @@ function cleanCache() {
 }
 
 /**
- * Sanitize text before TTS processing:
- * - Strip control characters (keep newlines/tabs for natural pauses)
- * - Remove SSML-like tags (Edge TTS handles plain text better)
- * - Ensure valid characters only
+ * Sanitize text before TTS processing.
+ * When ssml=true, preserves SSML tags (break, emphasis, prosody, speak).
+ * When ssml=false, strips all tags for plain text mode.
  */
-function sanitizeText(text: string): string {
-  return text
+function sanitizeText(text: string, preserveSSML: boolean = false): string {
+  let cleaned = text
     .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "") // strip control chars except \n \r \t
-    .replace(/<break[^>]*\/?>/gi, ", ") // convert SSML break tags to pauses (commas)
-    .replace(/<[^>]+>/g, "") // strip any remaining XML/HTML tags
     .replace(/\s{3,}/g, " ") // collapse excessive whitespace
     .trim();
+
+  if (!preserveSSML) {
+    // Strip all XML/SSML/HTML tags in plain text mode
+    cleaned = cleaned
+      .replace(/<break[^>]*\/?>/gi, ", ")
+      .replace(/<[^>]+>/g, "");
+  }
+
+  return cleaned;
 }
 
 function synthesizeTTS(
@@ -54,13 +119,14 @@ function synthesizeTTS(
   voice: string,
   outputPath: string,
   rate: string,
-  pitch: string
+  pitch: string,
+  ssml: boolean = false
 ): Promise<void> {
   return new Promise((resolve, reject) => {
     const workerPath = path.join(process.cwd(), "scripts", "tts-worker.js");
 
     // Write args to temp JSON file to avoid CLI argument escaping issues on Windows
-    const argsData = { text, voice, outputPath, rate, pitch };
+    const argsData = { text, voice, outputPath, rate, pitch, ssml };
     const argsFilePath = path.join(
       os.tmpdir(),
       `tts-args-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.json`
@@ -140,6 +206,7 @@ export async function POST(request: NextRequest) {
     const voice = body.voice as string | undefined;
     const rate = body.rate as string | undefined;
     const pitch = body.pitch as string | undefined;
+    const ssml = body.ssml as boolean | undefined;
 
     if (!text || typeof text !== "string") {
       return NextResponse.json(
@@ -148,8 +215,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Sanitize text for TTS
-    const cleanText = sanitizeText(text);
+    // Sanitize text for TTS (preserve SSML tags when in SSML mode)
+    const hasSSMLTags = text.includes("<break") || text.includes("<emphasis") || text.includes("<prosody");
+    const useSSML = ssml === true || hasSSMLTags;
+    const cleanText = sanitizeText(text, useSSML);
 
     if (!cleanText) {
       return NextResponse.json(
@@ -183,30 +252,67 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    // ── Circuit breaker check ──
+    if (isCircuitOpen()) {
+      return NextResponse.json(
+        { error: "TTS_CIRCUIT_OPEN", message: "TTS service temporarily unavailable. Retrying shortly." },
+        { status: 503, headers: { "Retry-After": "30" } }
+      );
+    }
+
+    // ── Deduplication: check if this exact synthesis is already in progress ──
+    const existingFlight = inFlight.get(cacheKey);
+    if (existingFlight) {
+      try {
+        const audioBuffer = await existingFlight;
+        return new NextResponse(new Uint8Array(audioBuffer), {
+          headers: {
+            "Content-Type": "audio/mpeg",
+            "Cache-Control": "public, max-age=1800",
+            "X-Cache": "DEDUP",
+          },
+        });
+      } catch {
+        // In-flight request failed, fall through to try our own synthesis
+      }
+    }
+
     // Synthesize via worker subprocess
     const tmpFile = path.join(
       os.tmpdir(),
       `tts-${cacheKey}-${Date.now()}.mp3`
     );
 
-    try {
+    // Create a synthesis promise and register it for dedup
+    const synthesisPromise = (async (): Promise<Buffer> => {
       await synthesizeTTS(
         cleanText,
         selectedVoice,
         tmpFile,
         rate || "default",
-        pitch || "default"
+        pitch || "default",
+        useSSML
       );
       const audioBuffer = fs.readFileSync(tmpFile);
 
       // Clean up temp file
-      try {
-        fs.unlinkSync(tmpFile);
-      } catch { }
+      try { fs.unlinkSync(tmpFile); } catch { }
 
       if (audioBuffer.length === 0) {
         throw new Error("Empty audio output");
       }
+
+      return audioBuffer;
+    })();
+
+    // Register in-flight for dedup
+    inFlight.set(cacheKey, synthesisPromise);
+
+    try {
+      const audioBuffer = await synthesisPromise;
+
+      // Record success for circuit breaker
+      recordCircuitSuccess();
 
       // Store in cache
       cache.set(cacheKey, {
@@ -222,16 +328,24 @@ export async function POST(request: NextRequest) {
         },
       });
     } catch (synthError) {
+      // Record failure for circuit breaker
+      recordCircuitFailure();
+
       // Clean up temp file on error
-      try {
-        fs.unlinkSync(tmpFile);
-      } catch { }
+      try { fs.unlinkSync(tmpFile); } catch { }
       throw synthError;
+    } finally {
+      // Always clean up in-flight entry
+      inFlight.delete(cacheKey);
     }
   } catch (error) {
     console.error("TTS error:", error);
     return NextResponse.json(
-      { error: "TTS synthesis failed", details: String(error) },
+      {
+        error: "TTS_SYNTHESIS_FAILED",
+        message: "Text-to-speech synthesis failed",
+        details: String(error),
+      },
       { status: 500 }
     );
   }
