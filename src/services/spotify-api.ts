@@ -222,54 +222,6 @@ export function mapSpotifyTrack(t: any): SpotifyTrack {
   };
 }
 
-export async function getRecommendations(
-  accessToken: string,
-  options: {
-    seed_genres?: string;
-    seed_tracks?: string;
-    seed_artists?: string;
-    target_energy?: number;
-    target_valence?: number;
-    target_danceability?: number;
-    target_acousticness?: number;
-    target_tempo?: number;
-    min_popularity?: number;
-    limit?: number;
-  }
-): Promise<SpotifyTrack[]> {
-  const params = new URLSearchParams({
-    limit: (options.limit || 20).toString(),
-    market: "NL"
-  });
-  if (options.seed_genres) params.append("seed_genres", options.seed_genres);
-  if (options.seed_tracks) params.append("seed_tracks", options.seed_tracks);
-  if (options.seed_artists) params.append("seed_artists", options.seed_artists);
-  if (options.target_energy !== undefined) params.append("target_energy", options.target_energy.toString());
-  if (options.target_valence !== undefined) params.append("target_valence", options.target_valence.toString());
-  if (options.target_danceability !== undefined) params.append("target_danceability", options.target_danceability.toString());
-  if (options.target_acousticness !== undefined) params.append("target_acousticness", options.target_acousticness.toString());
-  if (options.target_tempo !== undefined) params.append("target_tempo", options.target_tempo.toString());
-  if (options.min_popularity !== undefined) params.append("min_popularity", options.min_popularity.toString());
-
-  const response = await fetch(`${SPOTIFY_API}/recommendations?${params}`, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
-
-  if (!response.ok) {
-    if (response.status === 401) {
-      throw new SpotifyAuthError("Spotify token expired");
-    }
-    console.error("Spotify recommendations failed:", response.status);
-    return [];
-  }
-
-  const data = await response.json();
-  const tracks: SpotifyTrack[] = (data.tracks || [])
-    .filter((t: any) => t.uri && t.name)
-    .map((t: any) => mapSpotifyTrack(t));
-
-  return tracks;
-}
 
 // ── Multi-query parallel search ───────────────────────────
 
@@ -321,81 +273,13 @@ export async function searchTracksMulti(
   return merged;
 }
 
-function shuffleArray<T>(array: T[]): T[] {
+export function shuffleArray<T>(array: T[]): T[] {
   const shuffled = [...array];
   for (let i = shuffled.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
   }
   return shuffled;
-}
-
-// ── Audio Features API ────────────────────────────────────
-
-export interface AudioFeatures {
-  id: string;
-  energy: number;
-  tempo: number;
-  valence: number;
-  danceability: number;
-  acousticness: number;
-  instrumentalness: number;
-}
-
-/**
- * Fetch audio features for multiple tracks (up to 100 at a time).
- * Returns a map of trackId -> AudioFeatures.
- */
-export async function getAudioFeatures(
-  accessToken: string,
-  trackIds: string[]
-): Promise<Map<string, AudioFeatures>> {
-  const result = new Map<string, AudioFeatures>();
-  if (trackIds.length === 0) return result;
-
-  // Spotify allows max 100 IDs per request
-  const chunks = [];
-  for (let i = 0; i < trackIds.length; i += 100) {
-    chunks.push(trackIds.slice(i, i + 100));
-  }
-
-  for (const chunk of chunks) {
-    try {
-      const ids = chunk.join(",");
-      const response = await fetch(
-        `${SPOTIFY_API}/audio-features?ids=${ids}`,
-        { headers: { Authorization: `Bearer ${accessToken}` } }
-      );
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          throw new SpotifyAuthError("Spotify token expired");
-        }
-        console.error("Audio features fetch failed:", response.status);
-        continue;
-      }
-
-      const data = await response.json();
-      for (const feat of data.audio_features || []) {
-        if (feat && feat.id) {
-          result.set(feat.id, {
-            id: feat.id,
-            energy: feat.energy ?? 0.5,
-            tempo: feat.tempo ?? 120,
-            valence: feat.valence ?? 0.5,
-            danceability: feat.danceability ?? 0.5,
-            acousticness: feat.acousticness ?? 0.3,
-            instrumentalness: feat.instrumentalness ?? 0,
-          });
-        }
-      }
-    } catch (error) {
-      if (error instanceof SpotifyAuthError) throw error;
-      console.error("Audio features error:", error);
-    }
-  }
-
-  return result;
 }
 
 // ── Typed Spotify Auth Error ──────────────────────────────

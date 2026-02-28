@@ -67,18 +67,21 @@ async function main() {
   // If SSML mode is on OR the text already contains SSML tags, use SSML synthesis
   const useSSML = ssml === true || cleanText.includes("<break") || cleanText.includes("<emphasis");
 
-  let synthesisText;
-  if (useSSML) {
-    // If text already has a <speak> envelope, use as-is; otherwise wrap it
-    if (cleanText.startsWith("<speak")) {
-      synthesisText = cleanText;
-    } else {
-      synthesisText = buildSSML(cleanText, selectedVoice, rate, pitch);
-    }
-  } else {
-    // Plain text mode — still wrap in SSML for natural prosody
-    synthesisText = buildSSML(cleanText, selectedVoice, rate, pitch);
+  let synthesisText = cleanText;
+
+  // If text already has a <speak> envelope or SSML tags, strip them out to prevent literal reading
+  if (useSSML || cleanText.includes("<")) {
+    synthesisText = cleanText
+      .replace(/<break[^>]*\/?>/gi, ", ")
+      .replace(/<[^>]+>/g, "");
   }
+
+  // Add natural pauses for punctuation (commas, periods)
+  synthesisText = synthesisText
+    .replace(/([.!?])\s+/g, '$1 ')
+    .replace(/,\s+/g, ', ')
+    .replace(/\.\.\.\s*/g, '... ')
+    .replace(/:\s+/g, ': ');
 
   const tts = new EdgeTTS({
     voice: selectedVoice,

@@ -6,12 +6,7 @@
 import type { SpotifyTrack } from "@/types";
 import type { StationId, StationConfig } from "@/config/stations";
 import { getStation } from "@/config/stations";
-import {
-  searchTracksMulti,
-  getRecommendations,
-  getAudioFeatures,
-  type AudioFeatures,
-} from "./spotify-api";
+import { searchTracksMulti } from "./spotify-api";
 
 // ── Rotation Categories ─────────────────────────────────────
 
@@ -94,9 +89,6 @@ interface SelectionState {
   tasteProfile: TasteProfile;
   candidatePool: SpotifyTrack[]; // Pre-fetched candidates
   lastFetchStation: StationId | null;
-  // Audio feature cache for transition scoring
-  audioFeatureCache: Map<string, AudioFeatures>;
-  lastPlayedFeatures: AudioFeatures | null;
 }
 
 const MAX_RECENT_ARTISTS = 6;
@@ -113,8 +105,6 @@ let state: SelectionState = {
   tasteProfile: loadTasteProfile(),
   candidatePool: [],
   lastFetchStation: null,
-  audioFeatureCache: new Map(),
-  lastPlayedFeatures: null,
 };
 
 // ── Taste Profile Persistence ───────────────────────────────
@@ -192,8 +182,6 @@ export function resetSelectionState() {
     tasteProfile: loadTasteProfile(),
     candidatePool: [],
     lastFetchStation: null,
-    audioFeatureCache: new Map(),
-    lastPlayedFeatures: null,
   };
 }
 
@@ -220,12 +208,6 @@ export async function selectNextTrack(
   if (state.candidatePool.length < 5) {
     const newCandidates = await fetchCandidates(station, accessToken);
     state.candidatePool.push(...newCandidates);
-
-    // Fetch audio features for new candidates (fire-and-forget with cache)
-    fetchAndCacheAudioFeatures(
-      accessToken,
-      newCandidates.map((t) => t.id)
-    );
   }
 
   // Filter out already-played tracks and recent artists
@@ -275,11 +257,7 @@ function pickAndRecord(track: SpotifyTrack): SpotifyTrack {
     state.artistPlayCounts.set(artist.id, count + 1);
   }
 
-  // Update last played audio features
-  const features = state.audioFeatureCache.get(track.id);
-  if (features) {
-    state.lastPlayedFeatures = features;
-  }
+
 
   // Advance rotation
   state.rotationPosition =
@@ -296,7 +274,6 @@ function scoreTracks(
   station: StationConfig
 ): SpotifyTrack[] {
   const profile = state.tasteProfile;
-  const moodTarget = getMoodTarget();
 
   const scored = tracks.map((track) => {
     let score = 0;
@@ -315,39 +292,7 @@ function scoreTracks(
     else if (slot === "R" && age > 2 && age <= 8 && pop >= 40) score += 0.25;
     else if (slot === "G" && age > 8) score += 0.2;
 
-    // ── Audio Feature Scoring ───────────────────────────
-    const features = state.audioFeatureCache.get(track.id);
-    if (features) {
-      // Mood arc alignment: reward tracks close to the current mood target
-      const energyDiff = Math.abs(features.energy - moodTarget.energy);
-      const valenceDiff = Math.abs(features.valence - moodTarget.valence);
-      const danceDiff = Math.abs(features.danceability - moodTarget.danceability);
 
-      // Score based on proximity to mood target (closer = better)
-      score += Math.max(0, 0.25 - energyDiff * 0.5); // Up to +0.25
-      score += Math.max(0, 0.15 - valenceDiff * 0.3); // Up to +0.15
-      score += Math.max(0, 0.10 - danceDiff * 0.2);   // Up to +0.10
-
-      // Smooth transition scoring: if we have a last-played track,
-      // reward candidates that transition smoothly from it
-      if (state.lastPlayedFeatures) {
-        const lastEnergy = state.lastPlayedFeatures.energy;
-        const lastTempo = state.lastPlayedFeatures.tempo;
-
-        const eDelta = Math.abs(features.energy - lastEnergy);
-        const tDelta = Math.abs(features.tempo - lastTempo);
-
-        // Reward smooth energy transitions (±0.15 is ideal)
-        if (eDelta <= 0.15) score += 0.20;
-        else if (eDelta <= 0.25) score += 0.10;
-        else score -= 0.10; // Penalize harsh jumps
-
-        // Reward smooth tempo transitions (±20 BPM is ideal)
-        if (tDelta <= 20) score += 0.15;
-        else if (tDelta <= 40) score += 0.05;
-        else score -= 0.05;
-      }
-    }
 
     // Taste bonus: liked artists
     const artistIds = track.artists.map((a) => a.id);
@@ -391,14 +336,6 @@ async function fetchCandidates(
   station: StationConfig,
   accessToken: string
 ): Promise<SpotifyTrack[]> {
-  const moodTarget = getMoodTarget();
-
-  // Dynamic set ramping: increase energy slightly the longer they listen (up to a cap)
-  const sessionDepth = Math.min(state.playedTrackIds.size, 20);
-  const energyRamp = sessionDepth * 0.005; // Gentler ramp than before
-  const targetEnergy = Math.min(1.0, moodTarget.energy + energyRamp);
-  const targetValence = Math.min(1.0, moodTarget.valence + energyRamp / 2);
-
   // ── Primary strategy: Search (always available) ──
   const slot = ROTATION_CLOCK[state.rotationPosition % ROTATION_CLOCK.length];
   const queries = buildSearchQueries(station, slot);
@@ -407,98 +344,10 @@ async function fetchCandidates(
     (t) => (t.popularity ?? 50) >= Math.max(0, station.popularityRange.min - 15)
   );
 
-  // ── Optional enhancement: Recommendations API (may be unavailable) ──
-  // Spotify deprecated this endpoint for many apps, so we treat it as a bonus
-  let recoResults: SpotifyTrack[] = [];
-  try {
-    if (state.playedTrackIds.size > 0 || state.recentArtistIds.length > 0) {
-      const playedArr = Array.from(state.playedTrackIds);
-      const seedTracks = playedArr.slice(-2).join(",");
-
-      recoResults = await getRecommendations(accessToken, {
-        seed_tracks: seedTracks || undefined,
-        seed_artists:
-          !seedTracks && state.recentArtistIds.length > 0
-            ? state.recentArtistIds.slice(-2).join(",")
-            : undefined,
-        target_energy: targetEnergy,
-        target_valence: targetValence,
-        target_danceability: moodTarget.danceability,
-        limit: 15,
-        min_popularity: Math.max(0, station.popularityRange.min - 15),
-      });
-    } else if (station.seedGenres.length > 0) {
-      // Genre-seed fallback for cold starts
-      const genreSeeds = station.seedGenres
-        .sort(() => Math.random() - 0.5)
-        .slice(0, 2)
-        .join(",");
-
-      recoResults = await getRecommendations(accessToken, {
-        seed_genres: genreSeeds,
-        target_energy: targetEnergy,
-        target_valence: targetValence,
-        target_danceability: moodTarget.danceability,
-        limit: 15,
-        min_popularity: Math.max(0, station.popularityRange.min - 15),
-      });
-    }
-  } catch {
-    // Recommendations API unavailable (404/deprecated) — not a problem
-  }
-
-  // Merge: recommendations (if available) + search results, deduped by track ID
-  const seen = new Set<string>();
-  const merged: SpotifyTrack[] = [];
-
-  // Recommendations first (they're usually better targeted)
-  for (const track of recoResults) {
-    if (!seen.has(track.id)) {
-      seen.add(track.id);
-      merged.push(track);
-    }
-  }
-  // Then search results
-  for (const track of filteredSearch) {
-    if (!seen.has(track.id)) {
-      seen.add(track.id);
-      merged.push(track);
-    }
-  }
-
-  return merged.length > 0 ? merged : filteredSearch;
+  return filteredSearch;
 }
 
-/**
- * Fetch and cache audio features for a batch of track IDs.
- * Runs asynchronously without blocking the selection flow.
- */
-async function fetchAndCacheAudioFeatures(
-  accessToken: string,
-  trackIds: string[]
-) {
-  // Only fetch features we don't already have
-  const uncached = trackIds.filter((id) => !state.audioFeatureCache.has(id));
-  if (uncached.length === 0) return;
 
-  try {
-    const features = await getAudioFeatures(accessToken, uncached);
-    for (const [id, feat] of features) {
-      state.audioFeatureCache.set(id, feat);
-    }
-
-    // Trim cache if it gets too large (keep last 200)
-    if (state.audioFeatureCache.size > 200) {
-      const entries = Array.from(state.audioFeatureCache.entries());
-      const toRemove = entries.slice(0, entries.length - 200);
-      for (const [key] of toRemove) {
-        state.audioFeatureCache.delete(key);
-      }
-    }
-  } catch (error) {
-    console.error("Audio feature cache error:", error);
-  }
-}
 
 function buildSearchQueries(
   station: StationConfig,
@@ -584,9 +433,5 @@ export function getSelectionStats() {
     rotationPosition: state.rotationPosition,
     rotationSlot:
       ROTATION_CLOCK[state.rotationPosition % ROTATION_CLOCK.length],
-    cachedAudioFeatures: state.audioFeatureCache.size,
-    lastPlayedEnergy: state.lastPlayedFeatures?.energy ?? null,
-    lastPlayedTempo: state.lastPlayedFeatures?.tempo ?? null,
-    currentMoodTarget: getMoodTarget(),
   };
 }

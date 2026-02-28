@@ -1,9 +1,10 @@
+// @ts-nocheck
 /**
  * @jest-environment jsdom
  */
 
 import React from "react";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { ErrorBoundary } from "../ErrorBoundary";
 
 // Component that throws
