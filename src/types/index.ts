@@ -76,6 +76,17 @@ export interface GenreConfig {
 // Re-export STATIONS as GENRES for backward compatibility
 export { STATIONS as GENRES } from "@/config/stations";
 
+export interface CustomStationConfig {
+  id: string;
+  label: string;
+  searchTerms: string[];
+  yearRange: { min: number; max: number };
+  popularityRange: { min: number; max: number };
+  color: string;
+  icon: string;
+  isCustom: true;
+}
+
 export type RadioAction =
   | { type: "PLAY_TRACK"; track: SpotifyTrack }
   | { type: "ANNOUNCE"; script: string }

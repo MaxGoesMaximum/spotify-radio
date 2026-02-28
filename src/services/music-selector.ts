@@ -3,10 +3,21 @@
 //  mood arcs, genre-seed fallback, taste-aware
 // ═══════════════════════════════════════════════════════════════
 
-import type { SpotifyTrack } from "@/types";
+import type { SpotifyTrack, CustomStationConfig } from "@/types";
 import type { StationId, StationConfig } from "@/config/stations";
 import { getStation } from "@/config/stations";
 import { searchTracksMulti } from "./spotify-api";
+
+// ── Discovery Mode ──────────────────────────────────────────
+
+let discoveryModeEnabled = false;
+
+export function setDiscoveryMode(enabled: boolean) {
+  discoveryModeEnabled = enabled;
+  // Clear pool so next fetch uses new scoring
+  state.candidatePool = [];
+  state.lastFetchStation = null;
+}
 
 // ── Rotation Categories ─────────────────────────────────────
 
@@ -296,13 +307,25 @@ function scoreTracks(
 
     // Taste bonus: liked artists
     const artistIds = track.artists.map((a) => a.id);
-    if (artistIds.some((id) => profile.likedArtistIds.includes(id))) {
+    const isLikedArtist = artistIds.some((id) => profile.likedArtistIds.includes(id));
+    if (isLikedArtist) {
       score += 0.2;
     }
 
     // Taste penalty: skipped artists
     if (artistIds.some((id) => profile.skippedArtistIds.includes(id))) {
       score -= 0.3;
+    }
+
+    // Discovery mode adjustments
+    if (discoveryModeEnabled) {
+      // Penalize familiar artists — push toward unknowns
+      if (isLikedArtist) {
+        score -= 0.25; // net: +0.2 - 0.25 = -0.05
+      }
+      // Boost lower-popularity tracks (more obscure = more discovery potential)
+      if (pop < 50) score += 0.2;
+      if (pop < 30) score += 0.1;
     }
 
     // Artist frequency penalty (diminishing returns)
@@ -384,19 +407,25 @@ function buildSearchQueries(
       // Search by genre with year range
       let yearMin: number, yearMax: number;
 
-      switch (slot) {
-        case "C":
-          yearMin = currentYear - 2;
-          yearMax = currentYear;
-          break;
-        case "R":
-          yearMin = currentYear - 8;
-          yearMax = currentYear - 2;
-          break;
-        case "G":
-          yearMin = station.yearRange.min;
-          yearMax = currentYear - 8;
-          break;
+      if (discoveryModeEnabled) {
+        // Discovery mode: widen to full station range for maximum variety
+        yearMin = station.yearRange.min;
+        yearMax = station.yearRange.max;
+      } else {
+        switch (slot) {
+          case "C":
+            yearMin = currentYear - 2;
+            yearMax = currentYear;
+            break;
+          case "R":
+            yearMin = currentYear - 8;
+            yearMax = currentYear - 2;
+            break;
+          case "G":
+            yearMin = station.yearRange.min;
+            yearMax = currentYear - 8;
+            break;
+        }
       }
 
       // Ensure year range is valid
@@ -421,6 +450,113 @@ function getReleaseYear(track: SpotifyTrack): number {
     if (!isNaN(year)) return year;
   }
   return new Date().getFullYear(); // Default to current year
+}
+
+// ── Custom Station Selection ────────────────────────────────
+
+// Separate candidate pool for custom stations
+let customCandidatePool: SpotifyTrack[] = [];
+let lastCustomStationId: string | null = null;
+
+export async function selectNextTrackForCustom(
+  customStation: CustomStationConfig,
+  accessToken: string
+): Promise<SpotifyTrack | null> {
+  // Clear pool if station changed
+  if (lastCustomStationId !== customStation.id) {
+    customCandidatePool = [];
+    lastCustomStationId = customStation.id;
+  }
+
+  // Refill pool if low
+  if (customCandidatePool.length < 5) {
+    const queries = buildCustomSearchQueries(customStation);
+    const results = await searchTracksMulti(accessToken, queries, 15);
+    const filtered = results.filter(
+      (t) => (t.popularity ?? 50) >= Math.max(0, customStation.popularityRange.min - 15)
+    );
+    customCandidatePool.push(...filtered);
+  }
+
+  // Filter eligible
+  const eligible = customCandidatePool.filter((track) => {
+    if (state.playedTrackIds.has(track.id)) return false;
+    const artistIds = track.artists.map((a) => a.id);
+    if (artistIds.some((id) => state.recentArtistIds.includes(id))) return false;
+    if (track.duration_ms < 60000 || track.duration_ms > 600000) return false;
+    return true;
+  });
+
+  if (eligible.length === 0) {
+    const relaxed = customCandidatePool.filter((t) => !state.playedTrackIds.has(t.id));
+    if (relaxed.length === 0) {
+      customCandidatePool = [];
+      const queries = buildCustomSearchQueries(customStation);
+      const fresh = await searchTracksMulti(accessToken, queries, 15);
+      if (fresh.length === 0) return null;
+      return pickAndRecord(fresh[0]);
+    }
+    return pickAndRecord(scoreCustomTracks(relaxed, customStation)[0]);
+  }
+
+  const scored = scoreCustomTracks(eligible, customStation);
+  return pickAndRecord(scored[0]);
+}
+
+function buildCustomSearchQueries(custom: CustomStationConfig): string[] {
+  const currentYear = new Date().getFullYear();
+  const queries: string[] = [];
+  const shuffled = [...custom.searchTerms].sort(() => Math.random() - 0.5);
+  const picked = shuffled.slice(0, 3);
+
+  for (const term of picked) {
+    // Treat multi-word capitalized terms as artist names
+    const looksLikeArtist = /^[A-Z]/.test(term) && !term.match(/^(pop|rock|jazz|chill|house|dance|indie|hip hop|r&b|soul|funk|blues|country|metal|punk|electronic)/i);
+    if (looksLikeArtist) {
+      queries.push(`artist:${term}`);
+    } else {
+      const yearMin = Math.max(custom.yearRange.min, 1950);
+      const yearMax = Math.min(custom.yearRange.max, currentYear);
+      queries.push(`genre:${term} year:${yearMin}-${yearMax}`);
+    }
+  }
+
+  return queries;
+}
+
+function scoreCustomTracks(
+  tracks: SpotifyTrack[],
+  custom: CustomStationConfig
+): SpotifyTrack[] {
+  const profile = state.tasteProfile;
+
+  const scored = tracks.map((track) => {
+    let score = 0;
+    const pop = track.popularity ?? 50;
+    score += pop / 100;
+
+    const artistIds = track.artists.map((a) => a.id);
+    if (artistIds.some((id) => profile.likedArtistIds.includes(id))) score += 0.15;
+    if (artistIds.some((id) => profile.skippedArtistIds.includes(id))) score -= 0.3;
+
+    for (const artist of track.artists) {
+      const playCount = state.artistPlayCounts.get(artist.id) || 0;
+      if (playCount > 0) score -= Math.min(0.4, playCount * 0.1);
+    }
+
+    if (pop >= custom.popularityRange.min && pop <= custom.popularityRange.max) score += 0.1;
+
+    if (discoveryModeEnabled) {
+      if (pop < 50) score += 0.2;
+      if (pop < 30) score += 0.1;
+    }
+
+    score += (Math.random() - 0.5) * 0.12;
+    return { track, score };
+  });
+
+  scored.sort((a, b) => b.score - a.score);
+  return scored.map((s) => s.track);
 }
 
 // ── Export state info for debugging ─────────────────────────

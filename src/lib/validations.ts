@@ -66,6 +66,11 @@ export const paginationSchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(20),
 });
 
+// --- Discoveries ---
+export const discoveriesQuerySchema = z.object({
+  days: z.coerce.number().int().min(1).max(30).default(7),
+});
+
 // --- Audit Log ---
 export const auditLogSchema = z.object({
   action: z.string().min(1).max(100),

@@ -54,7 +54,10 @@ export async function POST(request: NextRequest) {
         if (!createRes.ok) {
             const errText = await createRes.text();
             console.error("Playlist creation failed:", errText);
-            return NextResponse.json({ error: "Failed to create playlist" }, { status: 500 });
+            if (createRes.status === 403) {
+                return NextResponse.json({ error: "Insufficient scope", scope: "playlist-modify-private" }, { status: 403 });
+            }
+            return NextResponse.json({ error: "Failed to create playlist" }, { status: createRes.status });
         }
 
         const playlist = await createRes.json();

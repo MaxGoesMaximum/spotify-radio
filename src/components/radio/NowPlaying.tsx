@@ -5,6 +5,7 @@ import { useRadioStore } from "@/store/radio-store";
 import { formatTime } from "@/lib/utils";
 import { useEffect, useState, useRef } from "react";
 import { getStation } from "@/config/stations";
+import { checkSavedTracks } from "@/services/spotify-api";
 import { FavoritesButton } from "./FavoritesButton";
 import { ShareButton } from "./ShareButton";
 
@@ -50,8 +51,27 @@ export function NowPlaying({ accessToken }: NowPlayingProps) {
   const isPlaying = useRadioStore((s) => s.isPlaying);
   const isAnnouncerSpeaking = useRadioStore((s) => s.isAnnouncerSpeaking);
   const currentGenre = useRadioStore((s) => s.currentGenre);
+  const incrementDiscoveredCount = useRadioStore((s) => s.incrementDiscoveredCount);
+  const [isNewTrack, setIsNewTrack] = useState<boolean | null>(null);
 
   const station = getStation(currentGenre);
+
+  // Check if current track is new to the user's library
+  useEffect(() => {
+    if (!currentTrack || !accessToken) return;
+    let cancelled = false;
+    setIsNewTrack(null);
+
+    checkSavedTracks(accessToken, [currentTrack.id])
+      .then(([isSaved]) => {
+        if (cancelled) return;
+        setIsNewTrack(!isSaved);
+        if (!isSaved) incrementDiscoveredCount();
+      })
+      .catch(() => { /* non-critical */ });
+
+    return () => { cancelled = true; };
+  }, [currentTrack?.id, accessToken]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!currentTrack) {
     return (
@@ -94,6 +114,17 @@ export function NowPlaying({ accessToken }: NowPlayingProps) {
             <span>{station.icon}</span>
             {station.label}
           </span>
+
+          {/* Discovery badge */}
+          {isNewTrack && (
+            <motion.span
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest bg-emerald-500/15 text-emerald-400 border border-emerald-500/20"
+            >
+              Nieuw
+            </motion.span>
+          )}
 
           {/* Playing status indicator */}
           {isPlaying && (

@@ -3,10 +3,20 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRadioStore } from "@/store/radio-store";
+import { useToastStore } from "@/store/toast-store";
+import { getStation } from "@/config/stations";
 
-export function SongHistory() {
+interface SongHistoryProps {
+  accessToken: string;
+}
+
+export function SongHistory({ accessToken }: SongHistoryProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [savedUrl, setSavedUrl] = useState<string | null>(null);
   const songHistory = useRadioStore((s) => s.songHistory);
+  const currentGenre = useRadioStore((s) => s.currentGenre);
+  const addToast = useToastStore((s) => s.addToast);
   const ref = useRef<HTMLDivElement>(null);
 
   // Click-outside-to-close
@@ -21,12 +31,67 @@ export function SongHistory() {
     return () => document.removeEventListener("mousedown", handler);
   }, [isOpen]);
 
+  // Reset saved URL when dropdown closes
+  useEffect(() => {
+    if (!isOpen) setSavedUrl(null);
+  }, [isOpen]);
+
   const formatTime = (isoString: string) => {
     const date = new Date(isoString);
     return date.toLocaleTimeString("nl-NL", {
       hour: "2-digit",
       minute: "2-digit",
     });
+  };
+
+  const handleSavePlaylist = async () => {
+    if (isSaving || songHistory.length < 2) return;
+    setIsSaving(true);
+    setSavedUrl(null);
+
+    try {
+      // Collect unique track URIs
+      const seen = new Set<string>();
+      const trackUris: string[] = [];
+      for (const entry of songHistory) {
+        if (!seen.has(entry.track.uri)) {
+          seen.add(entry.track.uri);
+          trackUris.push(entry.track.uri);
+        }
+      }
+
+      const station = getStation(currentGenre);
+      const dateStr = new Date().toLocaleDateString("nl-NL", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      });
+      const name = `Spotify Radio \u2022 ${station.label} \u2022 ${dateStr}`;
+
+      const res = await fetch("/api/spotify/playlist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, trackUris }),
+      });
+
+      if (res.status === 403) {
+        addToast("Opnieuw inloggen vereist voor playlists", "error", 5000);
+        return;
+      }
+
+      if (!res.ok) {
+        addToast("Playlist opslaan mislukt", "error", 3000);
+        return;
+      }
+
+      const data = await res.json();
+      setSavedUrl(data.playlistUrl);
+      addToast("Playlist opgeslagen in Spotify!", "success", 4000);
+    } catch {
+      addToast("Playlist opslaan mislukt", "error", 3000);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -63,10 +128,51 @@ export function SongHistory() {
           >
             {/* Header */}
             <div className="sticky top-0 p-3 border-b border-white/[0.06] bg-radio-surface/90 backdrop-blur-xl rounded-t-xl z-10">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-2">
                 <h3 className="text-xs font-bold text-white">Recent gespeeld</h3>
-                <span className="text-[10px] text-white/20 font-mono">{songHistory.length} nummers</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-white/20 font-mono">{songHistory.length}</span>
+                  {songHistory.length >= 2 && (
+                    <motion.button
+                      onClick={handleSavePlaylist}
+                      disabled={isSaving}
+                      whileHover={{ scale: 1.04 }}
+                      whileTap={{ scale: 0.96 }}
+                      className="flex items-center gap-1 px-2 py-1 rounded-md bg-[#1DB954]/10 border border-[#1DB954]/20 text-[#1DB954] text-[10px] font-medium hover:bg-[#1DB954]/20 transition-all disabled:opacity-50"
+                    >
+                      {isSaving ? (
+                        <div className="w-3 h-3 border border-[#1DB954]/30 border-t-[#1DB954] rounded-full animate-spin" />
+                      ) : (
+                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                        </svg>
+                      )}
+                      <span className="hidden sm:inline">Opslaan</span>
+                    </motion.button>
+                  )}
+                </div>
               </div>
+
+              {/* Saved playlist link */}
+              {savedUrl && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  className="mt-2 flex items-center gap-2 px-2 py-1.5 rounded-md bg-[#1DB954]/10 border border-[#1DB954]/15"
+                >
+                  <svg className="w-3.5 h-3.5 text-[#1DB954] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                  </svg>
+                  <a
+                    href={savedUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[10px] text-[#1DB954] hover:underline truncate"
+                  >
+                    Open in Spotify
+                  </a>
+                </motion.div>
+              )}
             </div>
 
             {songHistory.length === 0 ? (
@@ -88,7 +194,7 @@ export function SongHistory() {
                     transition={{ delay: idx * 0.02, duration: 0.2 }}
                     className="flex items-center gap-3 p-2 rounded-lg hover:bg-white/[0.04] transition-colors group/item"
                   >
-                    {/* Index / Thumbnail */}
+                    {/* Thumbnail */}
                     <div className="relative w-10 h-10 rounded-md overflow-hidden flex-shrink-0 bg-white/[0.03]">
                       {entry.track.album.images[0] ? (
                         <img
@@ -98,10 +204,9 @@ export function SongHistory() {
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center text-white/10 text-lg">
-                          \u266b
+                          {"\u266b"}
                         </div>
                       )}
-                      {/* Play count indicator */}
                       {idx === 0 && (
                         <div className="absolute inset-0 bg-radio-accent/20 flex items-center justify-center">
                           <div className="w-1.5 h-1.5 rounded-full bg-radio-accent animate-pulse" />

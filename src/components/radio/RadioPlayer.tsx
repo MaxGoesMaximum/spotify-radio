@@ -32,8 +32,10 @@ import { SongProgressBar } from "./SongProgressBar";
 import { SongReactions } from "./SongReactions";
 import { FullscreenPlayer } from "./FullscreenPlayer";
 import { VisualizerStyleSelector } from "./VisualizerStyleSelector";
+import { CustomStationBuilder } from "./CustomStationBuilder";
 import { pausePlayback, resumePlayback, SpotifyAuthError } from "@/services/spotify-api";
 import { getStationColor } from "@/config/stations";
+import { useToastStore } from "@/store/toast-store";
 
 interface RadioPlayerProps {
   accessToken: string;
@@ -46,10 +48,23 @@ export function RadioPlayer({ accessToken }: RadioPlayerProps) {
   const deviceId = useRadioStore((s) => s.deviceId);
   const setPlaying = useRadioStore((s) => s.setPlaying);
   const currentGenre = useRadioStore((s) => s.currentGenre);
+  const discoveryMode = useRadioStore((s) => s.discoveryMode);
+  const toggleDiscoveryMode = useRadioStore((s) => s.toggleDiscoveryMode);
+  const activeCustomStationId = useRadioStore((s) => s.activeCustomStationId);
+  const addToast = useToastStore((s) => s.addToast);
 
   const [genreColor, setGenreColor] = useState(getStationColor(currentGenre));
+  const [isCustomStationOpen, setIsCustomStationOpen] = useState(false);
 
   useEffect(() => {
+    if (activeCustomStationId) {
+      const custom = useRadioStore.getState().customStations.find((s) => s.id === activeCustomStationId);
+      if (custom) {
+        setGenreColor(custom.color);
+        return;
+      }
+    }
+
     setGenreColor(getStationColor(currentGenre));
 
     const handleColorChange = (e: Event) => {
@@ -61,7 +76,7 @@ export function RadioPlayer({ accessToken }: RadioPlayerProps) {
 
     window.addEventListener("stationColorChange", handleColorChange);
     return () => window.removeEventListener("stationColorChange", handleColorChange);
-  }, [currentGenre]);
+  }, [currentGenre, activeCustomStationId]);
 
   const { setOnTrackEnd } = useSpotifyPlayer(accessToken);
   const { startRadio, playNextTrack, skipTrack, changeGenre } =
@@ -187,7 +202,7 @@ export function RadioPlayer({ accessToken }: RadioPlayerProps) {
           <EQPresets />
           <QueuePreview />
           <SleepTimer accessToken={accessToken} />
-          <SongHistory />
+          <SongHistory accessToken={accessToken} />
           <WeatherWidget />
 
           {/* Notification toggle */}
@@ -206,13 +221,64 @@ export function RadioPlayer({ accessToken }: RadioPlayerProps) {
             </svg>
           </motion.button>
 
+          {/* Discovery mode toggle */}
+          <motion.button
+            onClick={() => {
+              toggleDiscoveryMode();
+              addToast(
+                !discoveryMode ? "Ontdekkingsmodus ingeschakeld — meer nieuwe muziek!" : "Ontdekkingsmodus uitgeschakeld",
+                !discoveryMode ? "success" : "info",
+                3000
+              );
+            }}
+            whileHover={{ scale: 1.04 }}
+            whileTap={{ scale: 0.96 }}
+            className={`flex items-center gap-1 px-2 py-1.5 rounded-lg border transition-all ${discoveryMode
+              ? "bg-emerald-500/10 border-emerald-500/25 text-emerald-400"
+              : "bg-white/[0.04] border-white/[0.08] text-white/40 hover:bg-white/[0.08]"
+              }`}
+            title={discoveryMode ? "Ontdekkingsmodus aan" : "Ontdekkingsmodus"}
+          >
+            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456z" />
+            </svg>
+            <span className="text-xs hidden sm:inline">Ontdekken</span>
+          </motion.button>
+
+          {/* Custom station builder */}
+          <motion.button
+            onClick={() => setIsCustomStationOpen(true)}
+            whileHover={{ scale: 1.04 }}
+            whileTap={{ scale: 0.96 }}
+            className={`flex items-center gap-1 px-2 py-1.5 rounded-lg border transition-all ${activeCustomStationId
+              ? "bg-purple-500/10 border-purple-500/25 text-purple-400"
+              : "bg-white/[0.04] border-white/[0.08] text-white/40 hover:bg-white/[0.08]"
+              }`}
+            title="Eigen zender bouwen"
+          >
+            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+            </svg>
+            <span className="text-xs hidden sm:inline">Eigen zender</span>
+          </motion.button>
+
           <KeyboardShortcuts
             onPlayPause={handlePlayPause}
-            onSkip={skipTrack}
+            onSkip={() => skipTrack()}
             onStationChange={changeGenre}
           />
         </div>
       </div>
+
+      {/* Custom Station Builder Modal */}
+      <AnimatePresence>
+        {isCustomStationOpen && (
+          <CustomStationBuilder
+            onClose={() => setIsCustomStationOpen(false)}
+            onStationCreated={() => skipTrack(false)}
+          />
+        )}
+      </AnimatePresence>
 
       {/* ═══ FM Dial Tuner ═══ */}
       <GlassCard className="p-3 sm:p-4">
@@ -312,7 +378,7 @@ export function RadioPlayer({ accessToken }: RadioPlayerProps) {
 
             {/* Skip */}
             <motion.button
-              onClick={skipTrack}
+              onClick={() => skipTrack()}
               disabled={isLoading || !isPlaying}
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}

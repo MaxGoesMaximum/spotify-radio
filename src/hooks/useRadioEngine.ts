@@ -14,6 +14,8 @@ import {
   selectNextTrack,
   updateTasteProfile,
   clearCandidatePool,
+  setDiscoveryMode,
+  selectNextTrackForCustom,
 } from "@/services/music-selector";
 import { getStation } from "@/config/stations";
 import {
@@ -37,11 +39,14 @@ export function useRadioEngine(
     isProcessingRef.current = true;
 
     try {
-      // Use the smart music selector instead of raw queue
-      const nextTrack = await selectNextTrack(
-        store.currentGenre,
-        accessToken
-      );
+      // Use the smart music selector — route through custom station if active
+      const activeCustom = store.activeCustomStationId
+        ? store.customStations.find((s) => s.id === store.activeCustomStationId)
+        : null;
+
+      const nextTrack = activeCustom
+        ? await selectNextTrackForCustom(activeCustom, accessToken)
+        : await selectNextTrack(store.currentGenre, accessToken);
 
       if (!nextTrack) {
         console.warn("No track found for station:", store.currentGenre);
@@ -171,10 +176,13 @@ export function useRadioEngine(
 
     try {
       // Select first track via smart selector
-      const firstTrack = await selectNextTrack(
-        store.currentGenre,
-        accessToken
-      );
+      const activeCustom = store.activeCustomStationId
+        ? store.customStations.find((s) => s.id === store.activeCustomStationId)
+        : null;
+
+      const firstTrack = activeCustom
+        ? await selectNextTrackForCustom(activeCustom, accessToken)
+        : await selectNextTrack(store.currentGenre, accessToken);
 
       if (firstTrack) {
         store.setAnnouncerSpeaking(true);
@@ -230,9 +238,9 @@ export function useRadioEngine(
     store.setLoading(false);
   }, [accessToken, store.deviceId, station, onAuthError]);
 
-  const skipTrack = useCallback(() => {
+  const skipTrack = useCallback((penalize = true) => {
     // Track the skip for taste profile
-    if (store.currentTrack) {
+    if (penalize && store.currentTrack) {
       updateTasteProfile("skip", store.currentTrack);
       store.incrementSkipCount();
     }
@@ -251,6 +259,7 @@ export function useRadioEngine(
       store.setAnnouncerSpeaking(false);
       store.setCurrentSegment(null);
       store.setGenre(genre);
+      store.setActiveCustomStation(null);
       clearCandidatePool();
       resetScheduler();
       hasStartedRef.current = false;
@@ -310,6 +319,11 @@ export function useRadioEngine(
     },
     [accessToken, store, onAuthError]
   );
+
+  // Sync discovery mode to music-selector singleton
+  useEffect(() => {
+    setDiscoveryMode(store.discoveryMode);
+  }, [store.discoveryMode]);
 
   // Listener count fluctuation
   useEffect(() => {

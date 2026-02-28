@@ -1,7 +1,7 @@
 "use client";
 
 import { create } from "zustand";
-import type { SpotifyTrack, WeatherData, NewsArticle, SongHistoryEntry, DJVoice } from "@/types";
+import type { SpotifyTrack, WeatherData, NewsArticle, SongHistoryEntry, DJVoice, CustomStationConfig } from "@/types";
 import type { StationId } from "@/config/stations";
 import type { ThemeId } from "@/config/themes";
 
@@ -49,6 +49,23 @@ function loadPersistedStation(): Genre {
     if (s) return s as Genre;
   } catch { }
   return "pop";
+}
+
+function loadPersistedDiscoveryMode(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return localStorage.getItem("sr_discovery_mode") === "true";
+  } catch { }
+  return false;
+}
+
+function loadPersistedCustomStations(): CustomStationConfig[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const s = localStorage.getItem("sr_custom_stations");
+    if (s) return JSON.parse(s);
+  } catch { }
+  return [];
 }
 
 interface RadioStore {
@@ -116,6 +133,14 @@ interface RadioStore {
   // Notifications
   notificationsEnabled: boolean;
 
+  // Discovery
+  discoveredTrackCount: number;
+  discoveryMode: boolean;
+
+  // Custom Stations
+  customStations: CustomStationConfig[];
+  activeCustomStationId: string | null;
+
   // Actions
   setPlaying: (playing: boolean) => void;
   setCurrentTrack: (track: SpotifyTrack | null) => void;
@@ -153,6 +178,11 @@ interface RadioStore {
   setReconnectAttempts: (n: number) => void;
   setNotificationsEnabled: (on: boolean) => void;
   setDjFrequency: (frequency: string) => void;
+  incrementDiscoveredCount: () => void;
+  toggleDiscoveryMode: () => void;
+  addCustomStation: (station: CustomStationConfig) => void;
+  removeCustomStation: (id: string) => void;
+  setActiveCustomStation: (id: string | null) => void;
 }
 
 export const useRadioStore = create<RadioStore>((set, get) => ({
@@ -190,6 +220,10 @@ export const useRadioStore = create<RadioStore>((set, get) => ({
   reconnectAttempts: 0,
   notificationsEnabled: false,
   djFrequency: "normal",
+  discoveredTrackCount: 0,
+  discoveryMode: loadPersistedDiscoveryMode(),
+  customStations: loadPersistedCustomStations(),
+  activeCustomStationId: null,
 
   setPlaying: (playing) => set({ isPlaying: playing }),
   setCurrentTrack: (track) => set({ currentTrack: track }),
@@ -281,4 +315,26 @@ export const useRadioStore = create<RadioStore>((set, get) => ({
     set({ djFrequency: frequency });
     debouncedSavePreferences({ djFrequency: frequency });
   },
+  incrementDiscoveredCount: () => set((s) => ({ discoveredTrackCount: s.discoveredTrackCount + 1 })),
+  toggleDiscoveryMode: () => {
+    const next = !get().discoveryMode;
+    set({ discoveryMode: next });
+    try { localStorage.setItem("sr_discovery_mode", String(next)); } catch { }
+  },
+  addCustomStation: (station) =>
+    set((s) => {
+      const next = [...s.customStations, station].slice(0, 5);
+      try { localStorage.setItem("sr_custom_stations", JSON.stringify(next)); } catch { }
+      return { customStations: next };
+    }),
+  removeCustomStation: (id) =>
+    set((s) => {
+      const next = s.customStations.filter((st) => st.id !== id);
+      try { localStorage.setItem("sr_custom_stations", JSON.stringify(next)); } catch { }
+      return {
+        customStations: next,
+        activeCustomStationId: s.activeCustomStationId === id ? null : s.activeCustomStationId,
+      };
+    }),
+  setActiveCustomStation: (id) => set({ activeCustomStationId: id }),
 }));
