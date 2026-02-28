@@ -399,13 +399,23 @@ async function fetchCandidates(
   const targetEnergy = Math.min(1.0, moodTarget.energy + energyRamp);
   const targetValence = Math.min(1.0, moodTarget.valence + energyRamp / 2);
 
-  // ── Strategy 1: Spotify Recommendations API (primary) ──
-  if (state.playedTrackIds.size > 0 || state.recentArtistIds.length > 0) {
-    const playedArr = Array.from(state.playedTrackIds);
-    const seedTracks = playedArr.slice(-2).join(",");
+  // ── Primary strategy: Search (always available) ──
+  const slot = ROTATION_CLOCK[state.rotationPosition % ROTATION_CLOCK.length];
+  const queries = buildSearchQueries(station, slot);
+  const searchResults = await searchTracksMulti(accessToken, queries, 15);
+  const filteredSearch = searchResults.filter(
+    (t) => (t.popularity ?? 50) >= Math.max(0, station.popularityRange.min - 15)
+  );
 
-    try {
-      const results = await getRecommendations(accessToken, {
+  // ── Optional enhancement: Recommendations API (may be unavailable) ──
+  // Spotify deprecated this endpoint for many apps, so we treat it as a bonus
+  let recoResults: SpotifyTrack[] = [];
+  try {
+    if (state.playedTrackIds.size > 0 || state.recentArtistIds.length > 0) {
+      const playedArr = Array.from(state.playedTrackIds);
+      const seedTracks = playedArr.slice(-2).join(",");
+
+      recoResults = await getRecommendations(accessToken, {
         seed_tracks: seedTracks || undefined,
         seed_artists:
           !seedTracks && state.recentArtistIds.length > 0
@@ -414,47 +424,49 @@ async function fetchCandidates(
         target_energy: targetEnergy,
         target_valence: targetValence,
         target_danceability: moodTarget.danceability,
-        limit: 20,
+        limit: 15,
         min_popularity: Math.max(0, station.popularityRange.min - 15),
       });
+    } else if (station.seedGenres.length > 0) {
+      // Genre-seed fallback for cold starts
+      const genreSeeds = station.seedGenres
+        .sort(() => Math.random() - 0.5)
+        .slice(0, 2)
+        .join(",");
 
-      if (results.length > 0) return results;
-    } catch (error) {
-      console.error("Recommendations with track seeds failed:", error);
-    }
-  }
-
-  // ── Strategy 2: Genre-seed fallback for cold starts or thin history ──
-  if (station.seedGenres.length > 0) {
-    // Pick up to 2 genre seeds (Spotify allows max 5 seeds total)
-    const genreSeeds = station.seedGenres
-      .sort(() => Math.random() - 0.5)
-      .slice(0, 2)
-      .join(",");
-
-    try {
-      const results = await getRecommendations(accessToken, {
+      recoResults = await getRecommendations(accessToken, {
         seed_genres: genreSeeds,
         target_energy: targetEnergy,
         target_valence: targetValence,
         target_danceability: moodTarget.danceability,
-        limit: 20,
+        limit: 15,
         min_popularity: Math.max(0, station.popularityRange.min - 15),
       });
+    }
+  } catch {
+    // Recommendations API unavailable (404/deprecated) — not a problem
+  }
 
-      if (results.length > 0) return results;
-    } catch (error) {
-      console.error("Recommendations with genre seeds failed:", error);
+  // Merge: recommendations (if available) + search results, deduped by track ID
+  const seen = new Set<string>();
+  const merged: SpotifyTrack[] = [];
+
+  // Recommendations first (they're usually better targeted)
+  for (const track of recoResults) {
+    if (!seen.has(track.id)) {
+      seen.add(track.id);
+      merged.push(track);
+    }
+  }
+  // Then search results
+  for (const track of filteredSearch) {
+    if (!seen.has(track.id)) {
+      seen.add(track.id);
+      merged.push(track);
     }
   }
 
-  // ── Strategy 3: Search fallback ──
-  const slot = ROTATION_CLOCK[state.rotationPosition % ROTATION_CLOCK.length];
-  const queries = buildSearchQueries(station, slot);
-  const results = await searchTracksMulti(accessToken, queries, 15);
-  return results.filter(
-    (t) => (t.popularity ?? 50) >= Math.max(0, station.popularityRange.min - 15)
-  );
+  return merged.length > 0 ? merged : filteredSearch;
 }
 
 /**
