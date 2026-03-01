@@ -33,6 +33,10 @@ import { SongReactions } from "./SongReactions";
 import { FullscreenPlayer } from "./FullscreenPlayer";
 import { VisualizerStyleSelector } from "./VisualizerStyleSelector";
 import { CustomStationBuilder } from "./CustomStationBuilder";
+import { DJRequestInput } from "./DJRequestInput";
+import { TimeMachine } from "./TimeMachine";
+import { MoodRadar } from "./MoodRadar";
+import { LiveLyrics } from "./LiveLyrics";
 import { pausePlayback, resumePlayback, SpotifyAuthError } from "@/services/spotify-api";
 import { getStationColor } from "@/config/stations";
 import { useToastStore } from "@/store/toast-store";
@@ -79,7 +83,7 @@ export function RadioPlayer({ accessToken }: RadioPlayerProps) {
   }, [currentGenre, activeCustomStationId]);
 
   const { setOnTrackEnd } = useSpotifyPlayer(accessToken);
-  const { startRadio, playNextTrack, skipTrack, changeGenre } =
+  const { startRadio, playNextTrack, skipTrack, changeGenre, handleDJRequest, clearDJRequest, activateTimeMachine } =
     useRadioEngine(accessToken, handleAuthError);
 
   // Auth error handler — triggers session refresh
@@ -245,6 +249,9 @@ export function RadioPlayer({ accessToken }: RadioPlayerProps) {
             <span className="text-xs hidden sm:inline">Ontdekken</span>
           </motion.button>
 
+          {/* Time Machine */}
+          <TimeMachine onActivate={activateTimeMachine} />
+
           {/* Custom station builder */}
           <motion.button
             onClick={() => setIsCustomStationOpen(true)}
@@ -403,14 +410,34 @@ export function RadioPlayer({ accessToken }: RadioPlayerProps) {
             {/* Volume */}
             <VolumeKnob />
           </motion.div>
+
+          {/* ═══ DJ Request Input & Lyrics Toggle ═══ */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5, delay: 0.6 }}
+            className="mt-3 pt-3 border-t border-white/[0.04] space-y-2"
+          >
+            <div className="flex items-start gap-2">
+              <div className="flex-1">
+                <DJRequestInput onSubmit={handleDJRequest} onClear={clearDJRequest} />
+              </div>
+              <LiveLyrics />
+            </div>
+          </motion.div>
         </GlassCard>
       </motion.div>
 
       {/* ═══ News Ticker ═══ */}
       <NewsWidget />
 
-      {/* ═══ Session Stats Footer ═══ */}
-      <SessionStats />
+      {/* ═══ Session Stats & Mood Radar ═══ */}
+      <div className="flex flex-col sm:flex-row items-start gap-3">
+        <div className="flex-1 w-full">
+          <SessionStats />
+        </div>
+        <MoodRadar />
+      </div>
     </motion.div>
   );
 }

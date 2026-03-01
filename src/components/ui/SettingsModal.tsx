@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useTheme } from "@/config/theme-context";
 import { THEMES, type ThemeId } from "@/config/themes";
 import { useRadioStore } from "@/store/radio-store";
+import { LOCALE_LABELS, LOCALE_FLAGS, type Locale } from "@/config/i18n";
 import type { DJVoice } from "@/types";
 
 export function SettingsModal({ onClose }: { onClose: () => void }) {
@@ -13,6 +14,8 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
     const setDJVoice = useRadioStore((s) => s.setDJVoice);
     const crossfadeDuration = useRadioStore((s) => s.crossfadeDuration);
     const setCrossfadeDuration = useRadioStore((s) => s.setCrossfadeDuration);
+    const locale = useRadioStore((s) => s.locale);
+    const setLocale = useRadioStore((s) => s.setLocale);
 
     const modalRef = useRef<HTMLDivElement>(null);
 
@@ -35,15 +38,35 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
         };
     }, [onClose]);
 
-    const djOptions: { value: DJVoice; label: string; description: string }[] = [
-        { value: "nl-NL-FennaNeural", label: "Fenna", description: "Vriendelijk, helder en energiek (Standaard)" },
-        { value: "nl-NL-ColetteNeural", label: "Colette", description: "Warm, professioneel en duidelijk" },
-        { value: "nl-NL-MaartenNeural", label: "Maarten", description: "Zwaar, rustig en informatief" },
-    ];
+    const djOptionsByLocale: Record<Locale, { value: DJVoice; label: string; description: string }[]> = {
+        nl: [
+            { value: "nl-NL-FennaNeural", label: "Fenna", description: "Vriendelijk, helder en energiek (Standaard)" },
+            { value: "nl-NL-ColetteNeural", label: "Colette", description: "Warm, professioneel en duidelijk" },
+            { value: "nl-NL-MaartenNeural", label: "Maarten", description: "Zwaar, rustig en informatief" },
+        ],
+        en: [
+            { value: "en-US-JennyNeural", label: "Jenny", description: "Friendly, clear and professional" },
+            { value: "en-US-GuyNeural", label: "Guy", description: "Deep, warm and authoritative" },
+        ],
+        de: [
+            { value: "de-DE-KatjaNeural", label: "Katja", description: "Freundlich, klar und professionell" },
+            { value: "de-DE-ConradNeural", label: "Conrad", description: "Tief, ruhig und informativ" },
+        ],
+    };
+
+    const djOptions = djOptionsByLocale[locale] || djOptionsByLocale.nl;
+
+    const localeOptions: Locale[] = ["nl", "en", "de"];
 
     const themeOptions = [
-        { id: "dark", icon: "\u25cf", label: "Apple Dark" },
+        { id: "dark", icon: "\u25cf", label: "Dark" },
         { id: "midnight", icon: "\u263e", label: "Midnight" },
+        { id: "light", icon: "\u2600", label: "Light" },
+        { id: "sunset", icon: "\uD83C\uDF05", label: "Sunset" },
+        { id: "ocean", icon: "\uD83C\uDF0A", label: "Ocean" },
+        { id: "neon", icon: "\u26A1", label: "Neon" },
+        { id: "retro", icon: "\uD83D\uDCFB", label: "Retro" },
+        { id: "minimal", icon: "\u25CB", label: "Minimal" },
     ];
 
     return (
@@ -72,10 +95,38 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
                 {/* Content */}
                 <div className="p-5 space-y-8 max-h-[70vh] overflow-y-auto custom-scrollbar">
 
+                    {/* Language Section */}
+                    <section className="space-y-3">
+                        <h3 className="text-sm font-medium text-white/50 uppercase tracking-wider">Taal / Language</h3>
+                        <div className="grid grid-cols-3 gap-2">
+                            {localeOptions.map((loc) => (
+                                <button
+                                    key={loc}
+                                    onClick={() => {
+                                        setLocale(loc);
+                                        // Auto-switch DJ voice to match locale
+                                        const firstVoice = djOptionsByLocale[loc]?.[0];
+                                        if (firstVoice) setDJVoice(firstVoice.value);
+                                    }}
+                                    className={`flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl border transition-all ${locale === loc
+                                        ? "bg-radio-accent/10 border-radio-accent/30 text-white"
+                                        : "bg-white/[0.02] border-white/5 text-white/50 hover:bg-white/[0.04] hover:text-white/80"
+                                        }`}
+                                >
+                                    <span className="text-xl">{LOCALE_FLAGS[loc]}</span>
+                                    <span className="text-xs font-medium">{LOCALE_LABELS[loc]}</span>
+                                    {locale === loc && (
+                                        <motion.div layoutId="locale-active" className="w-1.5 h-1.5 rounded-full bg-radio-accent" />
+                                    )}
+                                </button>
+                            ))}
+                        </div>
+                    </section>
+
                     {/* Theme Section */}
                     <section className="space-y-3">
                         <h3 className="text-sm font-medium text-white/50 uppercase tracking-wider">Thema</h3>
-                        <div className="grid grid-cols-3 gap-2">
+                        <div className="grid grid-cols-4 gap-2">
                             {themeOptions.map((opt) => (
                                 <button
                                     key={opt.id}

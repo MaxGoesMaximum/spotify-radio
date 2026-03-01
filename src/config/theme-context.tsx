@@ -45,6 +45,16 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     root.style.setProperty("--theme-glass-opacity", String(t.glassOpacity));
     root.style.setProperty("--theme-border-opacity", String(t.borderOpacity));
     root.style.setProperty("--theme-glow-intensity", String(t.glowIntensity));
+
+    // Set data-theme for CSS overrides (light themes need text color inversions)
+    const lightThemes = ["light", "minimal"];
+    if (lightThemes.includes(themeId)) {
+      root.setAttribute("data-theme", themeId);
+    } else if (themeId === "neon" || themeId === "retro") {
+      root.setAttribute("data-theme", themeId);
+    } else {
+      root.removeAttribute("data-theme");
+    }
   }, [themeId]);
 
   const setTheme = useCallback((id: ThemeId) => {

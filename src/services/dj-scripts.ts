@@ -22,7 +22,9 @@ export type ScriptType =
   | "station_id"
   | "fun_fact"
   | "song_intro"
-  | "jingle";
+  | "jingle"
+  | "request_ack"
+  | "time_machine";
 
 /**
  * Generate a DJ script for a specific station

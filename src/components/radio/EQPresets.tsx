@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { audioEQManager, type EQConnectionStatus } from "@/services/audio-eq";
 
 /* ─── Types ─── */
 interface EQPreset {
@@ -26,20 +27,42 @@ const PRESETS: EQPreset[] = [
 const FREQ_LABELS = ["32", "64", "125", "250", "500", "1K", "2K", "4K", "8K", "16K"];
 const DB_RANGE = 12;
 
+const STATUS_CONFIG: Record<EQConnectionStatus, { label: string; color: string }> = {
+  disconnected: { label: "Zoeken...", color: "text-white/20" },
+  connecting: { label: "Verbinden...", color: "text-amber-400/60" },
+  connected: { label: "Actief", color: "text-emerald-400/70" },
+  failed: { label: "Alleen visueel", color: "text-white/20" },
+};
+
 export function EQPresets() {
   const [isOpen, setIsOpen] = useState(false);
   const [isEnabled, setIsEnabled] = useState(true);
   const [activePreset, setActivePreset] = useState("flat");
   const [bands, setBands] = useState<number[]>(new Array(10).fill(0));
   const [dragging, setDragging] = useState<number | null>(null);
-  const ref = useRef<HTMLDivElement>(null);
+  const [eqStatus, setEqStatus] = useState<EQConnectionStatus>("disconnected");
+  const containerRef = useRef<HTMLDivElement>(null);
   const sliderRefs = useRef<(HTMLDivElement | null)[]>([]);
+
+  // Initialize AudioEQ and subscribe to status changes
+  useEffect(() => {
+    audioEQManager.startObserving();
+    const unsubscribe = audioEQManager.onStatusChange(setEqStatus);
+    return () => {
+      unsubscribe();
+    };
+  }, []);
+
+  // Sync enabled state to AudioEQ
+  useEffect(() => {
+    audioEQManager.setEnabled(isEnabled);
+  }, [isEnabled]);
 
   // Click-outside-to-close
   useEffect(() => {
     if (!isOpen) return;
     const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setIsOpen(false);
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) setIsOpen(false);
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
@@ -48,6 +71,8 @@ export function EQPresets() {
   const selectPreset = useCallback((preset: EQPreset) => {
     setActivePreset(preset.id);
     setBands([...preset.bands]);
+    // Apply to real audio
+    audioEQManager.setAllBands(preset.bands);
   }, []);
 
   const handleSliderInteraction = useCallback((index: number, clientY: number) => {
@@ -59,6 +84,8 @@ export function EQPresets() {
     setBands((prev) => {
       const next = [...prev];
       next[index] = db;
+      // Apply single band to real audio
+      audioEQManager.setBand(index, db);
       return next;
     });
     setActivePreset("custom");
@@ -79,6 +106,25 @@ export function EQPresets() {
     document.addEventListener("mouseup", onUp);
   }, [handleSliderInteraction]);
 
+  // Touch support for mobile
+  const handleTouchStart = useCallback((index: number, e: React.TouchEvent) => {
+    e.preventDefault();
+    setDragging(index);
+    handleSliderInteraction(index, e.touches[0].clientY);
+
+    const onMove = (ev: TouchEvent) => {
+      ev.preventDefault();
+      handleSliderInteraction(index, ev.touches[0].clientY);
+    };
+    const onEnd = () => {
+      setDragging(null);
+      document.removeEventListener("touchmove", onMove);
+      document.removeEventListener("touchend", onEnd);
+    };
+    document.addEventListener("touchmove", onMove, { passive: false });
+    document.addEventListener("touchend", onEnd);
+  }, [handleSliderInteraction]);
+
   // SVG frequency response curve
   const curvePoints = bands.map((db, i) => {
     const x = (i / (bands.length - 1)) * 280 + 10;
@@ -87,9 +133,10 @@ export function EQPresets() {
   }).join(" ");
 
   const isActive = activePreset !== "flat" || bands.some((b) => b !== 0);
+  const statusInfo = STATUS_CONFIG[eqStatus];
 
   return (
-    <div className="relative" ref={ref}>
+    <div className="relative" ref={containerRef}>
       <motion.button
         onClick={() => setIsOpen(!isOpen)}
         whileHover={{ scale: 1.04 }}
@@ -104,6 +151,10 @@ export function EQPresets() {
           <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75" />
         </svg>
         <span className="text-xs">EQ</span>
+        {/* Connection status dot */}
+        {eqStatus === "connected" && (
+          <div className="w-1.5 h-1.5 rounded-full bg-emerald-400/70" />
+        )}
       </motion.button>
 
       <AnimatePresence>
@@ -126,7 +177,13 @@ export function EQPresets() {
             >
               {/* ── Header ── */}
               <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.06]">
-                <span className="text-[13px] font-semibold text-white">Equalizer</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[13px] font-semibold text-white">Equalizer</span>
+                  {/* Connection status indicator */}
+                  <span className={`text-[9px] ${statusInfo.color}`}>
+                    {statusInfo.label}
+                  </span>
+                </div>
                 <div className="flex items-center gap-3">
                   <span className="text-[11px] text-white/30">
                     {activePreset === "custom" ? "Aangepast" : PRESETS.find((p) => p.id === activePreset)?.label}
@@ -215,8 +272,9 @@ export function EQPresets() {
                         {/* Slider track */}
                         <div
                           ref={(el) => { sliderRefs.current[i] = el; }}
-                          className="relative w-5 h-24 rounded-full bg-[#2c2c2e] cursor-pointer group"
+                          className="relative w-5 h-24 rounded-full bg-[#2c2c2e] cursor-pointer group touch-none"
                           onMouseDown={(e) => handleMouseDown(i, e)}
+                          onTouchStart={(e) => handleTouchStart(i, e)}
                         >
                           {/* Fill from center */}
                           <div
@@ -277,6 +335,15 @@ export function EQPresets() {
                   ))}
                 </div>
               </div>
+
+              {/* ── Status info (when failed) ── */}
+              {eqStatus === "failed" && (
+                <div className="px-4 pb-3">
+                  <p className="text-[10px] text-white/20 text-center">
+                    Audio processing niet beschikbaar door beveiligingsrestricties. EQ werkt als visualisatie.
+                  </p>
+                </div>
+              )}
             </motion.div>
           </>
         )}

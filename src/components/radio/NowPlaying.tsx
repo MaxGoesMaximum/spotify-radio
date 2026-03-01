@@ -8,6 +8,7 @@ import { getStation } from "@/config/stations";
 import { checkSavedTracks } from "@/services/spotify-api";
 import { FavoritesButton } from "./FavoritesButton";
 import { ShareButton } from "./ShareButton";
+import { WhyThisSong } from "./WhyThisSong";
 
 interface NowPlayingProps {
   accessToken: string;
@@ -198,6 +199,7 @@ export function NowPlaying({ accessToken }: NowPlayingProps) {
         <div className="flex items-center justify-center lg:justify-start gap-1 pt-0.5">
           <FavoritesButton accessToken={accessToken} />
           <ShareButton />
+          <WhyThisSong />
         </div>
       </motion.div>
     </AnimatePresence>

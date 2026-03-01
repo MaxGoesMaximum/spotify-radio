@@ -3,7 +3,7 @@
 //  mood arcs, genre-seed fallback, taste-aware
 // ═══════════════════════════════════════════════════════════════
 
-import type { SpotifyTrack, CustomStationConfig } from "@/types";
+import type { SpotifyTrack, CustomStationConfig, TrackScoreBreakdown, SelectionResult } from "@/types";
 import type { StationId, StationConfig } from "@/config/stations";
 import { getStation } from "@/config/stations";
 import { searchTracksMulti } from "./spotify-api";
@@ -17,6 +17,63 @@ export function setDiscoveryMode(enabled: boolean) {
   // Clear pool so next fetch uses new scoring
   state.candidatePool = [];
   state.lastFetchStation = null;
+}
+
+// ── Temporary Filter (DJ Requests) ─────────────────────────
+
+export interface TemporaryFilter {
+  yearRange?: { min: number; max: number };
+  genreBoost?: string[];
+  energyRange?: { min: number; max: number };
+  artistSearch?: string;
+  expiresAfterTracks: number;
+  tracksPlayed: number;
+}
+
+let activeFilter: TemporaryFilter | null = null;
+
+export function setTemporaryFilter(filter: Omit<TemporaryFilter, "tracksPlayed">) {
+  activeFilter = { ...filter, tracksPlayed: 0 };
+  // Clear pool so next fetch respects the new filter
+  state.candidatePool = [];
+  state.lastFetchStation = null;
+}
+
+export function clearTemporaryFilter() {
+  activeFilter = null;
+  state.candidatePool = [];
+  state.lastFetchStation = null;
+}
+
+export function getActiveFilter(): TemporaryFilter | null {
+  return activeFilter;
+}
+
+// ── Time Machine (decade override) ─────────────────────────
+
+let timeMachineDecade: number | null = null;
+
+export function setTimeMachineDecade(decade: number | null) {
+  timeMachineDecade = decade;
+  // Clear pool so next fetch uses the new decade
+  state.candidatePool = [];
+  state.lastFetchStation = null;
+}
+
+export function getTimeMachineDecade(): number | null {
+  return timeMachineDecade;
+}
+
+/** Called after each track to auto-expire the filter */
+function tickFilter() {
+  if (!activeFilter) return;
+  activeFilter.tracksPlayed++;
+  if (activeFilter.tracksPlayed >= activeFilter.expiresAfterTracks) {
+    activeFilter = null;
+    // Clear pool so normal selection resumes
+    state.candidatePool = [];
+    state.lastFetchStation = null;
+  }
 }
 
 // ── Rotation Categories ─────────────────────────────────────
@@ -38,7 +95,7 @@ interface MoodPoint {
   danceability: number;
 }
 
-function getMoodTarget(): MoodPoint {
+export function getMoodTarget(): MoodPoint {
   const now = new Date();
   const hour = now.getHours();
   const minute = now.getMinutes();
@@ -88,6 +145,7 @@ function getMoodTarget(): MoodPoint {
 interface TasteProfile {
   likedArtistIds: string[];
   skippedArtistIds: string[];
+  likedArtistNames: string[]; // Artist names for DJ personalization
   likedGenreBoosts: Record<string, number>;
   lastUpdated: number;
 }
@@ -128,6 +186,7 @@ function loadTasteProfile(): TasteProfile {
       return {
         likedArtistIds: parsed.likedArtistIds || [],
         skippedArtistIds: parsed.skippedArtistIds || [],
+        likedArtistNames: parsed.likedArtistNames || [],
         likedGenreBoosts: parsed.likedGenreBoosts || {},
         lastUpdated: parsed.lastUpdated || Date.now(),
       };
@@ -136,6 +195,7 @@ function loadTasteProfile(): TasteProfile {
   return {
     likedArtistIds: [],
     skippedArtistIds: [],
+    likedArtistNames: [],
     likedGenreBoosts: {},
     lastUpdated: Date.now(),
   };
@@ -157,11 +217,20 @@ export function updateTasteProfile(
   const artistIds = track.artists.map((a) => a.id);
 
   if (action === "like") {
-    for (const id of artistIds) {
+    for (let i = 0; i < artistIds.length; i++) {
+      const id = artistIds[i];
+      const name = track.artists[i]?.name;
       if (!profile.likedArtistIds.includes(id)) {
         profile.likedArtistIds.push(id);
         if (profile.likedArtistIds.length > MAX_TASTE_ARTISTS) {
           profile.likedArtistIds.shift();
+        }
+        // Store artist name for DJ personalization
+        if (name && !profile.likedArtistNames.includes(name)) {
+          profile.likedArtistNames.push(name);
+          if (profile.likedArtistNames.length > MAX_TASTE_ARTISTS) {
+            profile.likedArtistNames.shift();
+          }
         }
       }
       // Remove from skipped if they liked it
@@ -270,6 +339,9 @@ function pickAndRecord(track: SpotifyTrack): SpotifyTrack {
 
 
 
+  // Tick temporary filter (DJ requests)
+  tickFilter();
+
   // Advance rotation
   state.rotationPosition =
     (state.rotationPosition + 1) % ROTATION_CLOCK.length;
@@ -278,6 +350,13 @@ function pickAndRecord(track: SpotifyTrack): SpotifyTrack {
   state.candidatePool = state.candidatePool.filter((t) => t.id !== track.id);
 
   return track;
+}
+
+// Last score breakdown for "Why this song?" feature
+let lastTrackBreakdown: TrackScoreBreakdown | null = null;
+
+export function getLastTrackBreakdown(): TrackScoreBreakdown | null {
+  return lastTrackBreakdown;
 }
 
 function scoreTracks(
@@ -291,7 +370,8 @@ function scoreTracks(
 
     // Base: Spotify popularity (0–100 → 0–1)
     const pop = track.popularity ?? 50;
-    score += pop / 100;
+    const popularityScore = pop / 100;
+    score += popularityScore;
 
     // Rotation slot bonus: favor tracks matching current rotation category
     const slot = ROTATION_CLOCK[state.rotationPosition % ROTATION_CLOCK.length];
@@ -299,59 +379,99 @@ function scoreTracks(
     const currentYear = new Date().getFullYear();
     const age = currentYear - releaseYear;
 
-    if (slot === "C" && age <= 2 && pop >= 60) score += 0.3;
-    else if (slot === "R" && age > 2 && age <= 8 && pop >= 40) score += 0.25;
-    else if (slot === "G" && age > 8) score += 0.2;
-
-
+    let rotationBonus = 0;
+    if (slot === "C" && age <= 2 && pop >= 60) rotationBonus = 0.3;
+    else if (slot === "R" && age > 2 && age <= 8 && pop >= 40) rotationBonus = 0.25;
+    else if (slot === "G" && age > 8) rotationBonus = 0.2;
+    score += rotationBonus;
 
     // Taste bonus: liked artists
     const artistIds = track.artists.map((a) => a.id);
     const isLikedArtist = artistIds.some((id) => profile.likedArtistIds.includes(id));
+    let tasteBonus = 0;
     if (isLikedArtist) {
-      score += 0.2;
+      tasteBonus += 0.2;
     }
-
-    // Taste penalty: skipped artists
     if (artistIds.some((id) => profile.skippedArtistIds.includes(id))) {
-      score -= 0.3;
+      tasteBonus -= 0.3;
     }
+    score += tasteBonus;
 
     // Discovery mode adjustments
+    let discoveryBonus = 0;
     if (discoveryModeEnabled) {
-      // Penalize familiar artists — push toward unknowns
       if (isLikedArtist) {
-        score -= 0.25; // net: +0.2 - 0.25 = -0.05
+        discoveryBonus -= 0.25;
       }
-      // Boost lower-popularity tracks (more obscure = more discovery potential)
-      if (pop < 50) score += 0.2;
-      if (pop < 30) score += 0.1;
+      if (pop < 50) discoveryBonus += 0.2;
+      if (pop < 30) discoveryBonus += 0.1;
     }
+    score += discoveryBonus;
 
     // Artist frequency penalty (diminishing returns)
+    let artistPenalty = 0;
     for (const artist of track.artists) {
       const playCount = state.artistPlayCounts.get(artist.id) || 0;
       if (playCount > 0) {
-        score -= Math.min(0.4, playCount * 0.1);
+        artistPenalty -= Math.min(0.4, playCount * 0.1);
       }
     }
+    score += artistPenalty;
 
     // Popularity range bonus: tracks within station's preferred range get a boost
+    let popRangeBonus = 0;
     if (
       pop >= station.popularityRange.min &&
       pop <= station.popularityRange.max
     ) {
-      score += 0.1;
+      popRangeBonus = 0.1;
+    }
+    score += popRangeBonus;
+
+    // Mood arc: time-of-day energy alignment
+    // Use popularity as a proxy for energy (no extra API calls needed)
+    const moodTarget = getMoodTarget();
+    const estimatedEnergy = pop / 100; // Higher popularity ≈ more energetic
+    const energyDiff = Math.abs(estimatedEnergy - moodTarget.energy);
+    // Reward tracks that match the mood target (smaller diff = bigger bonus)
+    const moodBonus = Math.max(0, 0.15 - energyDiff * 0.2);
+    score += moodBonus;
+
+    // DJ Request energy filter: boost tracks matching requested energy range
+    if (activeFilter?.energyRange) {
+      const { min: eMin, max: eMax } = activeFilter.energyRange;
+      if (estimatedEnergy >= eMin && estimatedEnergy <= eMax) {
+        score += 0.25; // Strong boost for matching energy
+      } else {
+        score -= 0.15; // Penalize tracks outside requested range
+      }
     }
 
-    // Random factor for variety (reduced compared to before since we now score more intentionally)
+    // Random factor for variety
     score += (Math.random() - 0.5) * 0.12;
 
-    return { track, score };
+    const breakdown: TrackScoreBreakdown = {
+      popularity: popularityScore,
+      rotationSlot: slot,
+      rotationBonus,
+      tasteBonus,
+      discoveryBonus,
+      artistFrequencyPenalty: artistPenalty,
+      popularityRangeBonus: popRangeBonus,
+      totalScore: score,
+    };
+
+    return { track, score, breakdown };
   });
 
   // Sort by score descending
   scored.sort((a, b) => b.score - a.score);
+
+  // Store breakdown of the winning track
+  if (scored.length > 0) {
+    lastTrackBreakdown = scored[0].breakdown;
+  }
+
   return scored.map((s) => s.track);
 }
 
@@ -376,9 +496,18 @@ function buildSearchQueries(
   station: StationConfig,
   slot: RotationSlot
 ): string[] {
-  const terms = station.searchTerms;
   const currentYear = new Date().getFullYear();
   const queries: string[] = [];
+
+  // If there's an active filter with artist search, prioritize that
+  if (activeFilter?.artistSearch) {
+    queries.push(`artist:${activeFilter.artistSearch}`);
+    queries.push(`${activeFilter.artistSearch}`);
+    return queries;
+  }
+
+  // Use filter's genre boost terms if available, otherwise station terms
+  const terms = activeFilter?.genreBoost || station.searchTerms;
 
   // Pick 2-3 random terms
   const shuffled = [...terms].sort(() => Math.random() - 0.5);
@@ -407,7 +536,15 @@ function buildSearchQueries(
       // Search by genre with year range
       let yearMin: number, yearMax: number;
 
-      if (discoveryModeEnabled) {
+      // Time Machine: override year range with selected decade
+      if (timeMachineDecade) {
+        yearMin = timeMachineDecade;
+        yearMax = timeMachineDecade + 9;
+      } else if (activeFilter?.yearRange) {
+        // Use filter's year range if active
+        yearMin = activeFilter.yearRange.min;
+        yearMax = activeFilter.yearRange.max;
+      } else if (discoveryModeEnabled) {
         // Discovery mode: widen to full station range for maximum variety
         yearMin = station.yearRange.min;
         yearMax = station.yearRange.max;
@@ -428,9 +565,11 @@ function buildSearchQueries(
         }
       }
 
-      // Ensure year range is valid
-      yearMin = Math.max(yearMin, station.yearRange.min);
-      yearMax = Math.min(yearMax, station.yearRange.max);
+      // Ensure year range is valid (only clamp to station range when no override)
+      if (!activeFilter?.yearRange && !timeMachineDecade) {
+        yearMin = Math.max(yearMin, station.yearRange.min);
+        yearMax = Math.min(yearMax, station.yearRange.max);
+      }
       if (yearMin > yearMax) {
         yearMin = station.yearRange.min;
         yearMax = station.yearRange.max;

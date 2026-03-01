@@ -61,7 +61,14 @@ export interface RadioState {
 // Genre is now an alias for StationId — 10 stations
 export type Genre = StationId;
 
-export type DJVoice = "nl-NL-FennaNeural" | "nl-NL-ColetteNeural" | "nl-NL-MaartenNeural";
+export type DJVoice =
+  | "nl-NL-FennaNeural"
+  | "nl-NL-ColetteNeural"
+  | "nl-NL-MaartenNeural"
+  | "en-US-JennyNeural"
+  | "en-US-GuyNeural"
+  | "de-DE-KatjaNeural"
+  | "de-DE-ConradNeural";
 
 // Legacy GenreConfig kept for compatibility — use StationConfig from @/config/stations instead
 export interface GenreConfig {
@@ -91,3 +98,22 @@ export type RadioAction =
   | { type: "PLAY_TRACK"; track: SpotifyTrack }
   | { type: "ANNOUNCE"; script: string }
   | { type: "QUEUE_TRACKS"; tracks: SpotifyTrack[] };
+
+// Score breakdown for "Why this song?" feature
+export type RotationSlot = "C" | "R" | "G"; // Current, Recurrent, Gold
+
+export interface TrackScoreBreakdown {
+  popularity: number;
+  rotationSlot: RotationSlot;
+  rotationBonus: number;
+  tasteBonus: number;
+  discoveryBonus: number;
+  artistFrequencyPenalty: number;
+  popularityRangeBonus: number;
+  totalScore: number;
+}
+
+export interface SelectionResult {
+  track: SpotifyTrack;
+  breakdown: TrackScoreBreakdown;
+}

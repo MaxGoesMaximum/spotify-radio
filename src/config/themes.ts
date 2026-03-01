@@ -1,6 +1,6 @@
 // Theme configuration for the radio app
 
-export type ThemeId = "dark" | "midnight" | "light" | "sunset" | "ocean";
+export type ThemeId = "dark" | "midnight" | "light" | "sunset" | "ocean" | "neon" | "retro" | "minimal";
 
 export interface ThemeColors {
   bg: string;
@@ -126,19 +126,65 @@ export const THEMES: Record<string, ThemeConfig> = {
     particleCount: 0,
     glowIntensity: 0.2,
   },
-  // Fallbacks for legacy localStorage values
   neon: {
-    id: "dark",
-    label: "Apple Dark",
-    icon: "\u25cf",
-    colors: { bg: "#000000", surface: "#1C1C1E", border: "rgba(255, 255, 255, 0.1)", textPrimary: "#FFFFFF", textSecondary: "rgba(255, 255, 255, 0.6)", textDim: "rgba(255, 255, 255, 0.3)", accent: "#0A84FF", glow: "#0A84FF" },
-    glassOpacity: 0.05, borderOpacity: 0.1, blurAmount: "blur-3xl", particleCount: 0, glowIntensity: 0.1,
+    id: "neon",
+    label: "Neon",
+    icon: "\u26A1", // Lightning bolt
+    colors: {
+      bg: "#0a0a0f",
+      surface: "#12121a",
+      border: "rgba(0, 255, 255, 0.15)",
+      textPrimary: "#ffffff",
+      textSecondary: "rgba(255, 255, 255, 0.7)",
+      textDim: "rgba(255, 255, 255, 0.35)",
+      accent: "#00ffff",
+      glow: "#ff00ff",
+    },
+    glassOpacity: 0.06,
+    borderOpacity: 0.15,
+    blurAmount: "blur-2xl",
+    particleCount: 30,
+    glowIntensity: 0.6,
   },
   retro: {
-    id: "dark", label: "Apple Dark", icon: "\u25cf", colors: { bg: "#000000", surface: "#1C1C1E", border: "rgba(255, 255, 255, 0.1)", textPrimary: "#FFFFFF", textSecondary: "rgba(255, 255, 255, 0.6)", textDim: "rgba(255, 255, 255, 0.3)", accent: "#0A84FF", glow: "#0A84FF" }, glassOpacity: 0.05, borderOpacity: 0.1, blurAmount: "blur-3xl", particleCount: 0, glowIntensity: 0.1,
+    id: "retro",
+    label: "Retro",
+    icon: "\uD83D\uDCFB", // Radio emoji
+    colors: {
+      bg: "#1a1408",
+      surface: "#241e10",
+      border: "rgba(212, 162, 82, 0.12)",
+      textPrimary: "#f5e6c8",
+      textSecondary: "rgba(245, 230, 200, 0.6)",
+      textDim: "rgba(245, 230, 200, 0.3)",
+      accent: "#d4a252",
+      glow: "#b8860b",
+    },
+    glassOpacity: 0.05,
+    borderOpacity: 0.12,
+    blurAmount: "blur-xl",
+    particleCount: 0,
+    glowIntensity: 0.15,
   },
   minimal: {
-    id: "dark", label: "Apple Dark", icon: "\u25cf", colors: { bg: "#000000", surface: "#1C1C1E", border: "rgba(255, 255, 255, 0.1)", textPrimary: "#FFFFFF", textSecondary: "rgba(255, 255, 255, 0.6)", textDim: "rgba(255, 255, 255, 0.3)", accent: "#0A84FF", glow: "#0A84FF" }, glassOpacity: 0.05, borderOpacity: 0.1, blurAmount: "blur-3xl", particleCount: 0, glowIntensity: 0.1,
+    id: "minimal",
+    label: "Minimal",
+    icon: "\u25CB", // White circle
+    colors: {
+      bg: "#fafafa",
+      surface: "#ffffff",
+      border: "rgba(0, 0, 0, 0.06)",
+      textPrimary: "#111111",
+      textSecondary: "rgba(17, 17, 17, 0.55)",
+      textDim: "rgba(17, 17, 17, 0.3)",
+      accent: "#111111",
+      glow: "#666666",
+    },
+    glassOpacity: 0.7,
+    borderOpacity: 0.06,
+    blurAmount: "blur-3xl",
+    particleCount: 0,
+    glowIntensity: 0,
   },
 };
 

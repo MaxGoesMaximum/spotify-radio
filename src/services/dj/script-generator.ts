@@ -8,6 +8,8 @@ import { getDJName, getInterjection, getProsodyStyle, type ProsodyStyle } from "
 import { getHolidayDJLine } from "./holidays";
 import { getGreeting } from "@/lib/utils";
 import type { ScriptType } from "@/services/dj-scripts";
+import type { UserDJContext } from "./user-context";
+import { getEraIntro, getEraContext } from "./phrase-banks/era-context";
 
 // ── SSML Prosody Helpers ────────────────────────────────────
 
@@ -316,6 +318,9 @@ export interface ScriptOptions {
   nextTrack?: SpotifyTrack | null;
   weather?: WeatherData | null;
   news?: NewsArticle[];
+  userContext?: UserDJContext;
+  requestLabel?: string;
+  timeMachineDecade?: number;
 }
 
 export function generateStationScript(
@@ -332,16 +337,40 @@ export function generateStationScript(
   const { previousTrack, nextTrack, weather, news } = options;
 
   const parts: string[] = [];
+  const userCtx = options.userContext;
 
   switch (type) {
     case "intro": {
-      parts.push(
-        `${getGreeting()}! ${pause(200)} Je luistert naar ${emph(show.name, style.emphasisLevel)} op ${emph(station.label, style.emphasisLevel)} met ${emph(djName, style.emphasisLevel)}.`
-      );
+      // Personalized greeting for returning users
+      if (userCtx?.isReturningUser && userCtx?.name) {
+        parts.push(
+          `${getGreeting()}! ${pause(200)} Welkom terug, ${emph(userCtx.name, style.emphasisLevel)}! Je luistert naar ${emph(show.name, style.emphasisLevel)} op ${emph(station.label, style.emphasisLevel)} met ${emph(djName, style.emphasisLevel)}.`
+        );
+      } else if (userCtx?.name) {
+        parts.push(
+          `${getGreeting()}! ${pause(200)} Welkom ${emph(userCtx.name, style.emphasisLevel)}! Je luistert naar ${emph(show.name, style.emphasisLevel)} op ${emph(station.label, style.emphasisLevel)} met ${emph(djName, style.emphasisLevel)}.`
+        );
+      } else {
+        parts.push(
+          `${getGreeting()}! ${pause(200)} Je luistert naar ${emph(show.name, style.emphasisLevel)} op ${emph(station.label, style.emphasisLevel)} met ${emph(djName, style.emphasisLevel)}.`
+        );
+      }
+
       parts.push(
         `Het is ${getTimeString()} ${pause(150)} en we hebben weer geweldige muziek voor je klaarstaan.`
       );
       parts.push(pick(TIME_ADVICE[getTimeOfDayKey()]));
+
+      // Occasional reference to favorite artists
+      if (userCtx?.topArtists?.length && Math.random() < 0.3) {
+        const favArtist = pick(userCtx.topArtists);
+        const artistPhrases = [
+          `Ik weet dat je fan bent van ${emph(favArtist, style.emphasisLevel)}, misschien draai ik die later!`,
+          `Wie weet komt er straks wat van ${emph(favArtist, style.emphasisLevel)} voorbij!`,
+          `Voor de fans van ${emph(favArtist, style.emphasisLevel)}, blijf luisteren!`,
+        ];
+        parts.push(pick(artistPhrases));
+      }
 
       const holidayLine = getHolidayDJLine();
       if (holidayLine) {
@@ -375,6 +404,16 @@ export function generateStationScript(
       if (Math.random() < 0.15) {
         const genreFacts = GENRE_FUN_FACTS[stationId] || GENRE_FUN_FACTS.default;
         parts.push(`${pause(200)} Wist je dat trouwens? ${pick(genreFacts)}`);
+      }
+
+      // Occasional personalized touch between songs
+      if (userCtx?.name && Math.random() < 0.1) {
+        const personalBetween = [
+          `Speciaal voor jou, ${emph(userCtx.name, style.emphasisLevel)}!`,
+          `Blijf luisteren, ${emph(userCtx.name, style.emphasisLevel)}!`,
+          `${emph(userCtx.name, style.emphasisLevel)}, dit vind je vast goed!`,
+        ];
+        parts.push(pick(personalBetween));
       }
 
       if (nextTrack) {
@@ -525,6 +564,62 @@ export function generateStationScript(
         `${emph(station.label, "strong")}, altijd aan!`,
       ];
       parts.push(pick(jingles));
+      break;
+    }
+
+    case "time_machine": {
+      const decade = options.timeMachineDecade;
+      if (decade) {
+        const eraCtx = getEraContext(decade);
+        parts.push(`${pause(300)} ${getEraIntro(decade)}`);
+        if (nextTrack) {
+          parts.push(
+            `${pause(200)} We beginnen met ${formatTrackCredit(nextTrack, style)} uit ${eraCtx.label}!`
+          );
+        }
+      } else {
+        // Turning off time machine
+        parts.push(`${pause(200)} We verlaten de tijdmachine en gaan terug naar het heden!`);
+        if (nextTrack) {
+          parts.push(`${pause(200)} ${pick(phrases.transition)} ${formatTrackCredit(nextTrack, style)}.`);
+        }
+      }
+      break;
+    }
+
+    case "request_ack": {
+      const reqLabel = options.requestLabel || "je verzoek";
+      const userName = userCtx?.name;
+
+      const ackPhrases: Record<DJTone, string[]> = {
+        energetic: [
+          `Jaaa! ${pause(200)} ${userName ? `${emph(userName, style.emphasisLevel)}, ` : ""}${reqLabel}? Daar gaan we! Let op!`,
+          `Top verzoek! ${pause(200)} ${reqLabel} komt eraan! ${pause(150)} Luister maar!`,
+          `${userName ? `Hey ${emph(userName, style.emphasisLevel)}! ` : ""}Goed idee! ${pause(200)} We schakelen over naar ${reqLabel}!`,
+        ],
+        chill: [
+          `${userName ? `${emph(userName, style.emphasisLevel)}, ` : ""}mooie keuze... ${pause(200)} ${reqLabel}. Daar gaan we.`,
+          `Ah, ${reqLabel}... ${pause(200)} Lekker. Komt eraan.`,
+          `Even ${reqLabel} voor je opzetten... ${pause(200)} Geniet ervan.`,
+        ],
+        warm: [
+          `${userName ? `Wat leuk, ${emph(userName, style.emphasisLevel)}! ` : ""}${reqLabel}? Geweldig idee! ${pause(200)} Komt eraan!`,
+          `Super verzoek! ${pause(200)} We gaan over naar ${reqLabel}! ${pause(150)} Speciaal voor jullie!`,
+          `${reqLabel}, daar hou ik van! ${pause(200)} Luister maar!`,
+        ],
+        smooth: [
+          `${userName ? `${emph(userName, style.emphasisLevel)}, ` : ""}prachtige keuze... ${pause(200)} ${reqLabel}. Even geduld.`,
+          `Ah, ${reqLabel}... ${pause(200)} Uitstekende smaak. ${pause(150)} Hier komt het.`,
+          `We schakelen elegant over naar ${reqLabel}... ${pause(200)} Geniet ervan.`,
+        ],
+        edgy: [
+          `${userName ? `Yo ${emph(userName, style.emphasisLevel)}! ` : ""}${reqLabel}? ${pause(150)} Let's go! Beuken!`,
+          `Check! ${pause(200)} ${reqLabel} incoming! ${pause(150)} Volume omhoog!`,
+          `${reqLabel}? Hard! ${pause(200)} Daar gaan we, hou je vast!`,
+        ],
+      };
+
+      parts.push(pick(ackPhrases[tone]));
       break;
     }
 

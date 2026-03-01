@@ -36,12 +36,22 @@ function RadioPageContent() {
   const { session, status } = useSpotifySession();
   const router = useRouter();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const setUserName = useRadioStore((s) => s.setUserName);
 
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/");
     }
   }, [status, router]);
+
+  // Set user name for DJ personalization
+  useEffect(() => {
+    if (session?.user?.name) {
+      // Use first name only for natural DJ speech
+      const firstName = session.user.name.split(" ")[0];
+      setUserName(firstName);
+    }
+  }, [session?.user?.name, setUserName]);
 
   if (status === "loading") {
     return (

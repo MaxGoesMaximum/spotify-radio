@@ -1,6 +1,7 @@
 "use client";
 
-export type DJVoice = "nl-NL-FennaNeural" | "nl-NL-ColetteNeural" | "nl-NL-MaartenNeural";
+import type { DJVoice } from "@/types";
+export type { DJVoice };
 
 let currentAudio: HTMLAudioElement | null = null;
 
@@ -94,6 +95,8 @@ export async function speak(
     return new Promise<void>((resolve) => {
       const audio = new Audio(blobUrl);
       audio.volume = Math.max(0, Math.min(1, volume));
+      // Tag so AudioEQ manager skips this element
+      audio.dataset.ttsAudio = "true";
       currentAudio = audio;
 
       audio.onended = () => {

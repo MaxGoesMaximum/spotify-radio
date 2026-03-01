@@ -1,9 +1,12 @@
 "use client";
 
 import { create } from "zustand";
-import type { SpotifyTrack, WeatherData, NewsArticle, SongHistoryEntry, DJVoice, CustomStationConfig } from "@/types";
+import type { SpotifyTrack, WeatherData, NewsArticle, SongHistoryEntry, DJVoice, CustomStationConfig, TrackScoreBreakdown } from "@/types";
+import type { DJRequest } from "@/services/dj/request-parser";
+import type { SyncedLyric } from "@/services/lyrics";
 import type { StationId } from "@/config/stations";
 import type { ThemeId } from "@/config/themes";
+import type { Locale } from "@/config/i18n";
 
 /* ─── Debounced preference sync to DB ─── */
 let prefSaveTimer: ReturnType<typeof setTimeout> | null = null;
@@ -57,6 +60,15 @@ function loadPersistedDiscoveryMode(): boolean {
     return localStorage.getItem("sr_discovery_mode") === "true";
   } catch { }
   return false;
+}
+
+function loadPersistedLocale(): Locale {
+  if (typeof window === "undefined") return "nl";
+  try {
+    const s = localStorage.getItem("sr_locale");
+    if (s === "nl" || s === "en" || s === "de") return s;
+  } catch { }
+  return "nl";
 }
 
 function loadPersistedCustomStations(): CustomStationConfig[] {
@@ -141,6 +153,28 @@ interface RadioStore {
   customStations: CustomStationConfig[];
   activeCustomStationId: string | null;
 
+  // User identity (for DJ personalization)
+  userName: string | null;
+
+  // Track score breakdown (for "Why this song?" feature)
+  currentTrackBreakdown: TrackScoreBreakdown | null;
+
+  // DJ Request (active user request)
+  activeRequest: DJRequest | null;
+
+  // Time Machine
+  timeMachineDecade: number | null;
+
+  // Mood Radar
+  sessionMoodHistory: { energy: number; valence: number; danceability: number }[];
+
+  // Lyrics
+  lyricsEnabled: boolean;
+  currentLyrics: SyncedLyric[] | null;
+
+  // Language
+  locale: Locale;
+
   // Actions
   setPlaying: (playing: boolean) => void;
   setCurrentTrack: (track: SpotifyTrack | null) => void;
@@ -183,6 +217,14 @@ interface RadioStore {
   addCustomStation: (station: CustomStationConfig) => void;
   removeCustomStation: (id: string) => void;
   setActiveCustomStation: (id: string | null) => void;
+  setUserName: (name: string | null) => void;
+  setCurrentTrackBreakdown: (breakdown: TrackScoreBreakdown | null) => void;
+  setActiveRequest: (request: DJRequest | null) => void;
+  setTimeMachineDecade: (decade: number | null) => void;
+  addMoodPoint: (point: { energy: number; valence: number; danceability: number }) => void;
+  toggleLyrics: () => void;
+  setCurrentLyrics: (lyrics: SyncedLyric[] | null) => void;
+  setLocale: (locale: Locale) => void;
 }
 
 export const useRadioStore = create<RadioStore>((set, get) => ({
@@ -224,6 +266,14 @@ export const useRadioStore = create<RadioStore>((set, get) => ({
   discoveryMode: loadPersistedDiscoveryMode(),
   customStations: loadPersistedCustomStations(),
   activeCustomStationId: null,
+  userName: null,
+  currentTrackBreakdown: null,
+  activeRequest: null,
+  timeMachineDecade: null,
+  sessionMoodHistory: [],
+  lyricsEnabled: false,
+  currentLyrics: null,
+  locale: loadPersistedLocale(),
 
   setPlaying: (playing) => set({ isPlaying: playing }),
   setCurrentTrack: (track) => set({ currentTrack: track }),
@@ -337,4 +387,20 @@ export const useRadioStore = create<RadioStore>((set, get) => ({
       };
     }),
   setActiveCustomStation: (id) => set({ activeCustomStationId: id }),
+  setUserName: (name) => set({ userName: name }),
+  setCurrentTrackBreakdown: (breakdown) => set({ currentTrackBreakdown: breakdown }),
+  setActiveRequest: (request) => set({ activeRequest: request }),
+  setTimeMachineDecade: (decade) => set({ timeMachineDecade: decade }),
+  addMoodPoint: (point) => set((s) => ({
+    sessionMoodHistory: [...s.sessionMoodHistory, point].slice(-50), // Keep last 50
+  })),
+  toggleLyrics: () => set((s) => ({ lyricsEnabled: !s.lyricsEnabled })),
+  setCurrentLyrics: (lyrics) => set({ currentLyrics: lyrics }),
+  setLocale: (locale) => {
+    set({ locale });
+    try { localStorage.setItem("sr_locale", locale); } catch { }
+    // Also sync the i18n module
+    import("@/config/i18n").then((mod) => mod.setLocale(locale)).catch(() => {});
+    debouncedSavePreferences({ language: locale });
+  },
 }));
