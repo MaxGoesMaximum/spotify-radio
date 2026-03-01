@@ -3,8 +3,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { useSpotifySession } from "@/hooks/useSpotifySession";
-import { ListeningHeatmap } from "@/components/stats/ListeningHeatmap";
 
 interface StatsData {
     totalTracks: number;
@@ -156,6 +156,11 @@ export default function StatsPage() {
                                                         <span className="text-white/80 text-sm font-medium capitalize">{g.genre}</span>
                                                         <span className="text-white/25 text-xs tabular-nums">{g.count} tracks</span>
                                                     </div>
+                                                    <div className="flex flex-wrap justify-center mb-6 max-h-32 overflow-y-auto scrollbar-thin">
+                                                        {stats.topGenres.slice(5).map((g: { genre: string; count: number }, i: number) => (
+                                                            <span key={g.genre} className="mx-2 mb-2 text-sm text-white/50">{i + 6}. {g.genre}</span>
+                                                        ))}
+                                                    </div>
                                                     <div className="h-2 bg-white/[0.04] rounded-full overflow-hidden">
                                                         <motion.div
                                                             initial={{ width: 0 }}
@@ -223,7 +228,7 @@ export default function StatsPage() {
                                         >
                                             <span className="text-white/15 text-xs w-5 text-right font-mono tabular-nums">{i + 1}</span>
                                             {t.albumArt ? (
-                                                <img src={t.albumArt} alt={t.title} className="w-10 h-10 rounded-md object-cover border border-white/[0.06]" />
+                                                <Image src={t.albumArt} alt={t.title} width={40} height={40} className="rounded-md object-cover border border-white/[0.06]" />
                                             ) : (
                                                 <div className="w-10 h-10 rounded-md bg-white/[0.04] border border-white/[0.06] flex items-center justify-center">🎵</div>
                                             )}
@@ -247,9 +252,9 @@ export default function StatsPage() {
                                     <div className="flex items-center gap-6">
                                         <svg viewBox="0 0 120 120" className="w-32 h-32 shrink-0 -rotate-90">
                                             {(() => {
-                                                const total = stats.topGenres.reduce((sum, g) => sum + g.count, 0);
+                                                const total = stats.topGenres.reduce((sum: number, g: { count: number }) => sum + g.count, 0);
                                                 let offset = 0;
-                                                return stats.topGenres.slice(0, 6).map((g) => {
+                                                return stats.topGenres.slice(0, 6).map((g: { genre: string; count: number }) => {
                                                     const pct = (g.count / total) * 100;
                                                     const dash = (pct * 314.16) / 100;
                                                     const gap = 314.16 - dash;
@@ -277,8 +282,8 @@ export default function StatsPage() {
                                             </text>
                                         </svg>
                                         <div className="space-y-1.5 min-w-0">
-                                            {stats.topGenres.slice(0, 6).map((g) => {
-                                                const total = stats.topGenres.reduce((s, x) => s + x.count, 0);
+                                            {stats.topGenres.slice(0, 6).map((g: { genre: string; count: number }) => {
+                                                const total = stats.topGenres.reduce((s: number, x: { count: number }) => s + x.count, 0);
                                                 return (
                                                     <div key={g.genre} className="flex items-center gap-2">
                                                         <div className="w-2 h-2 rounded-full shrink-0" style={{ background: getGenreColor(g.genre) }} />

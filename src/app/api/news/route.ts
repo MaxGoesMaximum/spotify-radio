@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
     if (!res.ok) throw new Error(`News API error: ${res.status}`);
 
     const data = await res.json();
-    const articles = (data.articles || []).map((a: any) => ({
+    const articles = (data.articles || []).map((a: Record<string, any>) => ({
       title: a.title,
       description: a.description,
       source: a.source?.name || "Unknown",

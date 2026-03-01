@@ -1,7 +1,7 @@
 // Service Worker for Spotify Radio PWA
 // Versioned caching with strategy-based fetching
 
-const CACHE_VERSION = "v3";
+const CACHE_VERSION = "v4";
 const STATIC_CACHE = `spotify-radio-static-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `spotify-radio-runtime-${CACHE_VERSION}`;
 
@@ -9,6 +9,9 @@ const PRECACHE_URLS = [
   "/",
   "/manifest.json",
   "/icon.svg",
+  "/icon-192.png",
+  "/icon-512.png",
+  "/apple-icon.png",
 ];
 
 const CACHEABLE_EXTENSIONS = /\.(js|css|woff2|png|jpg|jpeg|svg|ico|webp)$/;

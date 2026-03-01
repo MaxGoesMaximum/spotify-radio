@@ -54,15 +54,15 @@ const config: NextAuthConfig = {
     }),
   ],
   callbacks: {
-    async jwt({ token, user, account, trigger }) {
+    async jwt({ token, account, trigger }) {
       // On initial sign in from our custom credentials
       if (trigger === "signIn" && account?.type === "credentials") {
         // The tokens are passed via the signIn call from our callback route
-        const params = account as any;
+        const params = account as Record<string, unknown>;
         if (params.accessToken) {
-          token.accessToken = params.accessToken;
-          token.refreshToken = params.refreshToken;
-          token.expiresAt = params.expiresAt;
+          token.accessToken = params.accessToken as string;
+          token.refreshToken = params.refreshToken as string;
+          token.expiresAt = params.expiresAt as number;
         }
       }
 

@@ -1,0 +1,48 @@
+﻿
+Running 3 tests using 3 workers
+
+  Ô£ÿ  2 [chromium] ÔÇ║ e2e\ui-flows.spec.ts:36:9 ÔÇ║ UI & Core Flows ÔÇ║ Ambient Mode can be toggled without lagging (2ms)
+  Ô£ÿ  1 [chromium] ÔÇ║ e2e\ui-flows.spec.ts:5:9 ÔÇ║ UI & Core Flows ÔÇ║ Home page loads without crashing or glitching (3ms)
+  Ô£ÿ  3 [chromium] ÔÇ║ e2e\ui-flows.spec.ts:24:9 ÔÇ║ UI & Core Flows ÔÇ║ Explore page loads and renders skeleton or content (3ms)
+
+
+  1) [chromium] ÔÇ║ e2e\ui-flows.spec.ts:5:9 ÔÇ║ UI & Core Flows ÔÇ║ Home page loads without crashing or glitching 
+
+    Error: browserType.launch: Executable doesn't exist at C:\Users\emile\AppData\Local\ms-playwright\chromium_headless_shell-1208\chrome-headless-shell-win64\chrome-headless-shell.exe
+    ÔòöÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòù
+    Ôòæ Looks like Playwright Test or Playwright was just installed or updated. Ôòæ
+    Ôòæ Please run the following command to download new browsers:              Ôòæ
+    Ôòæ                                                                         Ôòæ
+    Ôòæ     npx playwright install                                              Ôòæ
+    Ôòæ                                                                         Ôòæ
+    Ôòæ <3 Playwright Team                                                      Ôòæ
+    ÔòÜÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòØ
+
+  2) [chromium] ÔÇ║ e2e\ui-flows.spec.ts:24:9 ÔÇ║ UI & Core Flows ÔÇ║ Explore page loads and renders skeleton or content 
+
+    Error: browserType.launch: Executable doesn't exist at C:\Users\emile\AppData\Local\ms-playwright\chromium_headless_shell-1208\chrome-headless-shell-win64\chrome-headless-shell.exe
+    ÔòöÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòù
+    Ôòæ Looks like Playwright Test or Playwright was just installed or updated. Ôòæ
+    Ôòæ Please run the following command to download new browsers:              Ôòæ
+    Ôòæ                                                                         Ôòæ
+    Ôòæ     npx playwright install                                              Ôòæ
+    Ôòæ                                                                         Ôòæ
+    Ôòæ <3 Playwright Team                                                      Ôòæ
+    ÔòÜÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòØ
+
+  3) [chromium] ÔÇ║ e2e\ui-flows.spec.ts:36:9 ÔÇ║ UI & Core Flows ÔÇ║ Ambient Mode can be toggled without lagging 
+
+    Error: browserType.launch: Executable doesn't exist at C:\Users\emile\AppData\Local\ms-playwright\chromium_headless_shell-1208\chrome-headless-shell-win64\chrome-headless-shell.exe
+    ÔòöÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòù
+    Ôòæ Looks like Playwright Test or Playwright was just installed or updated. Ôòæ
+    Ôòæ Please run the following command to download new browsers:              Ôòæ
+    Ôòæ                                                                         Ôòæ
+    Ôòæ     npx playwright install                                              Ôòæ
+    Ôòæ                                                                         Ôòæ
+    Ôòæ <3 Playwright Team                                                      Ôòæ
+    ÔòÜÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòØ
+
+  3 failed
+    [chromium] ÔÇ║ e2e\ui-flows.spec.ts:5:9 ÔÇ║ UI & Core Flows ÔÇ║ Home page loads without crashing or glitching 
+    [chromium] ÔÇ║ e2e\ui-flows.spec.ts:24:9 ÔÇ║ UI & Core Flows ÔÇ║ Explore page loads and renders skeleton or content 
+    [chromium] ÔÇ║ e2e\ui-flows.spec.ts:36:9 ÔÇ║ UI & Core Flows ÔÇ║ Ambient Mode can be toggled without lagging 

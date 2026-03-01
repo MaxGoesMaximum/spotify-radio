@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { useSpotifySession } from "@/hooks/useSpotifySession";
 import { STATIONS } from "@/config/stations";
 import { InviteCard } from "@/components/ui/InviteCard";
@@ -205,10 +206,12 @@ export default function SocialPage() {
                                 >
                                     {/* Avatar */}
                                     {activity.user.image ? (
-                                        <img
+                                        <Image
                                             src={activity.user.image}
                                             alt={activity.user.name}
-                                            className="w-10 h-10 rounded-full border border-white/[0.08] object-cover shrink-0"
+                                            width={40}
+                                            height={40}
+                                            className="rounded-full border border-white/[0.08] object-cover shrink-0"
                                         />
                                     ) : (
                                         <div

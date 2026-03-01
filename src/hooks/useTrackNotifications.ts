@@ -80,7 +80,7 @@ export function useTrackNotifications() {
     } catch {
       // Notifications may fail in certain environments
     }
-  }, [currentTrack?.id, isPlaying, notificationsEnabled]);
+  }, [currentTrack, currentTrack?.id, isPlaying, notificationsEnabled]);
 
   return { requestPermission, notificationsEnabled };
 }

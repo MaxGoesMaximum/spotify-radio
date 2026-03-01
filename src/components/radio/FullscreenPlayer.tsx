@@ -11,8 +11,6 @@ export function FullscreenPlayer() {
     const currentTrack = useRadioStore((s) => s.currentTrack);
     const isPlaying = useRadioStore((s) => s.isPlaying);
     const currentGenre = useRadioStore((s) => s.currentGenre);
-    const progress = useRadioStore((s) => s.progress);
-    const duration = useRadioStore((s) => s.duration);
 
     const genreColor = getStationColor(currentGenre);
     const station = getStation(currentGenre);

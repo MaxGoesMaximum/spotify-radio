@@ -160,7 +160,7 @@ export function Visualizer() {
     return () => {
       if (frameRef.current) cancelAnimationFrame(frameRef.current);
     };
-  }, [isPlaying, isAnnouncerSpeaking, genreColor]);
+  }, [isPlaying, isAnnouncerSpeaking, genreColor, style]);
 
   // Create static arrays for rendering
   const barsArray = Array.from({ length: BAR_COUNT });

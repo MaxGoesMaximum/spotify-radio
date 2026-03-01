@@ -12,7 +12,7 @@ export function ServiceWorkerRegister() {
             window.addEventListener("load", () => {
                 // Hardcode cache-bust parameter to rescue users stuck with immutable headers
                 navigator.serviceWorker
-                    .register("/sw.js?v=4")
+                    .register("/sw.js?v=5")
                     .then((registration) => {
                         console.log("SW registered:", registration.scope);
                     })

@@ -54,7 +54,7 @@ export function useRadioEngine(
           store.setCurrentLyrics(lyrics);
         }
       })
-      .catch(() => {});
+      .catch(() => { });
   }, [store]);
 
   // Track mood point from a track (uses popularity as proxy for audio features)
@@ -211,7 +211,7 @@ export function useRadioEngine(
     } finally {
       isProcessingRef.current = false;
     }
-  }, [accessToken, store, station, onAuthError, getUserContext, trackMoodPoint]);
+  }, [accessToken, store, station, onAuthError]);
 
   const startRadio = useCallback(async () => {
     if (!accessToken || !store.deviceId || hasStartedRef.current) return;
@@ -283,7 +283,7 @@ export function useRadioEngine(
     }
 
     store.setLoading(false);
-  }, [accessToken, store.deviceId, station, onAuthError, getUserContext, trackMoodPoint]);
+  }, [accessToken, store.deviceId, station, onAuthError]);
 
   const skipTrack = useCallback((penalize = true) => {
     // Track the skip for taste profile
@@ -356,7 +356,7 @@ export function useRadioEngine(
             store.setPlaying(true);
             store.incrementSessionTrackCount();
             trackMoodPoint(firstTrack);
-          fetchTrackLyrics(firstTrack);
+            fetchTrackLyrics(firstTrack);
           }
         } catch (error) {
           if (error instanceof SpotifyAuthError) {
@@ -368,7 +368,7 @@ export function useRadioEngine(
         }
       }
     },
-    [accessToken, store, onAuthError, getUserContext, trackMoodPoint]
+    [accessToken, store, onAuthError]
   );
 
   // Handle DJ request from user
@@ -423,7 +423,7 @@ export function useRadioEngine(
     setTimeout(() => {
       store.setActiveRequest(null);
     }, request.expiresAfterTracks * 180000); // Rough estimate: ~3min per track
-  }, [accessToken, store, station, playNextTrack, getUserContext]);
+  }, [accessToken, store, station, playNextTrack]);
 
   // Clear DJ request handler
   const clearDJRequest = useCallback(() => {
@@ -483,7 +483,7 @@ export function useRadioEngine(
             store.setPlaying(true);
             store.incrementSessionTrackCount();
             trackMoodPoint(nextTrack);
-        fetchTrackLyrics(nextTrack);
+            fetchTrackLyrics(nextTrack);
           }
         }
       }
@@ -493,7 +493,7 @@ export function useRadioEngine(
       // Fallback: just play next track without announcement
       playNextTrack();
     }
-  }, [accessToken, store, station, playNextTrack, getUserContext, trackMoodPoint]);
+  }, [accessToken, store, station, playNextTrack]);
 
   // Refetch lyrics when lyrics are toggled on while a track is playing
   useEffect(() => {
@@ -503,7 +503,7 @@ export function useRadioEngine(
     if (!store.lyricsEnabled) {
       store.setCurrentLyrics(null);
     }
-  }, [store.lyricsEnabled]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [store.lyricsEnabled, store.currentTrack, store.currentLyrics, fetchTrackLyrics, store]);
 
   // Sync discovery mode to music-selector singleton
   useEffect(() => {

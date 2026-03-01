@@ -4,6 +4,7 @@ import { Suspense, useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { RadioPlayer } from "@/components/radio/RadioPlayer";
 import { AmbientBackground } from "@/components/radio/AmbientBackground";
+import Image from "next/image";
 import { SettingsModal } from "@/components/ui/SettingsModal";
 import { ConnectionBanner } from "@/components/ui/ConnectionBanner";
 import { WelcomeOverlay } from "@/components/ui/WelcomeOverlay";
@@ -144,10 +145,12 @@ function RadioPageContent() {
                 <span className="text-white/90 text-sm font-medium leading-none">{session.user?.name}</span>
                 <span className="text-white/40 text-[10px] uppercase font-medium mt-1">Premium</span>
               </div>
-              <img
+              <Image
                 src={session.user.image}
                 alt="Profile"
-                className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border border-white/10 shadow-lg object-cover"
+                width={40}
+                height={40}
+                className="rounded-full border border-white/10 shadow-lg object-cover"
               />
             </div>
           )}

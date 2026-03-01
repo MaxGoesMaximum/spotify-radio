@@ -1,0 +1,27 @@
+﻿
+Running 3 tests using 3 workers
+
+  Ô£ô  2 [chromium] ÔÇ║ e2e\api.spec.ts:20:9 ÔÇ║ Backend API Routes ÔÇ║ GET /api/user/preferences should return 401 (2.0s)
+  Ô£ÿ  1 [chromium] ÔÇ║ e2e\api.spec.ts:14:9 ÔÇ║ Backend API Routes ÔÇ║ GET /api/spotify/playlist should require auth or handle gracefully (2.0s)
+  Ô£ô  3 [chromium] ÔÇ║ e2e\api.spec.ts:5:9 ÔÇ║ Backend API Routes ÔÇ║ GET /api/news should return 401 Unauthorized if not authenticated (2.5s)
+
+
+  1) [chromium] ÔÇ║ e2e\api.spec.ts:14:9 ÔÇ║ Backend API Routes ÔÇ║ GET /api/spotify/playlist should require auth or handle gracefully 
+
+    Error: [2mexpect([22m[31mreceived[39m[2m).[22mtoContain[2m([22m[32mexpected[39m[2m) // indexOf[22m
+
+    Expected value: [32m405[39m
+    Received array: [31m[400, 401, 200, 500][39m
+
+      15 |         const response = await request.get('/api/spotify/playlist?mood=chill');
+      16 |         // Unauthenticated request should usually be 401
+    > 17 |         expect([400, 401, 200, 500]).toContain(response.status());
+         |                                      ^
+      18 |     });
+      19 |
+      20 |     test('GET /api/user/preferences should return 401', async ({ request }) => {
+        at C:\SpotifyRadio\e2e\api.spec.ts:17:38
+
+  1 failed
+    [chromium] ÔÇ║ e2e\api.spec.ts:14:9 ÔÇ║ Backend API Routes ÔÇ║ GET /api/spotify/playlist should require auth or handle gracefully 
+  2 passed (17.8s)

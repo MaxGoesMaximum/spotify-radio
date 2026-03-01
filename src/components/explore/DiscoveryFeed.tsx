@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { checkSavedTracks, saveTrack } from "@/services/spotify-api";
 import { useToastStore } from "@/store/toast-store";
+import Image from "next/image";
 import { getStation, type StationId } from "@/config/stations";
 
 interface DiscoveryEntry {
@@ -235,9 +236,9 @@ export function DiscoveryFeed({ accessToken }: DiscoveryFeedProps) {
                 className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/[0.06] hover:bg-white/[0.04] transition-colors group"
               >
                 {/* Album art */}
-                <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 bg-white/[0.03]">
+                <div className="relative w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 bg-white/[0.03]">
                   {entry.albumImage ? (
-                    <img src={entry.albumImage} alt="" className="w-full h-full object-cover" />
+                    <Image src={entry.albumImage} alt="" fill sizes="48px" className="object-cover" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-white/10">
                       {"\u266b"}
@@ -271,11 +272,10 @@ export function DiscoveryFeed({ accessToken }: DiscoveryFeedProps) {
                   disabled={isSaved}
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.9 }}
-                  className={`p-2 rounded-lg transition-all flex-shrink-0 ${
-                    isSaved
-                      ? "text-[#1DB954]"
-                      : "text-white/20 hover:text-white/60 hover:bg-white/[0.06]"
-                  }`}
+                  className={`p-2 rounded-lg transition-all flex-shrink-0 ${isSaved
+                    ? "text-[#1DB954]"
+                    : "text-white/20 hover:text-white/60 hover:bg-white/[0.06]"
+                    }`}
                   title={isSaved ? "Opgeslagen" : "Opslaan in Spotify"}
                 >
                   <svg className="w-4 h-4" fill={isSaved ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>

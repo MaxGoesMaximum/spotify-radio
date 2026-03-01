@@ -1,0 +1,596 @@
+﻿
+> spotify-radio@1.0.0 lint
+> next lint
+
+node.exe : 
+At line:1 char:1
++ & "C:\Program 
+Files\nodejs/node.exe" 
+"C:\Users\emile\AppData
+\Roaming\ ...
++ ~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~
+~~
+    + CategoryInfo     
+         : NotSpecifi  
+  ed: (:String) [],    
+ RemoteException
+    + FullyQualifiedEr 
+   rorId : NativeComm  
+  andError
+ 
+./src/app/api/news/rout
+e.ts
+47:67  Error: 
+Unexpected any. 
+Specify a different 
+type.  @typescript-esli
+nt/no-explicit-any
+
+./src/app/demo/page.tsx
+147:6  Warning: React 
+Hook useEffect has a 
+missing dependency: 
+'store'. Either 
+include it or remove 
+the dependency array.  
+react-hooks/exhaustive-
+deps
+
+./src/app/radio/page.ts
+x
+147:15  Warning: Using 
+`<img>` could result 
+in slower LCP and 
+higher bandwidth. 
+Consider using `<Image 
+/>` from `next/image` 
+to automatically 
+optimize images. This 
+may incur additional 
+usage or cost from 
+your provider. See: htt
+ps://nextjs.org/docs/me
+ssages/no-img-element  
+@next/next/no-img-eleme
+nt
+
+./src/app/recap/page.ts
+x
+251:21  Warning: Using 
+`<img>` could result 
+in slower LCP and 
+higher bandwidth. 
+Consider using `<Image 
+/>` from `next/image` 
+to automatically 
+optimize images. This 
+may incur additional 
+usage or cost from 
+your provider. See: htt
+ps://nextjs.org/docs/me
+ssages/no-img-element  
+@next/next/no-img-eleme
+nt
+
+./src/app/social/page.t
+sx
+208:41  Warning: Using 
+`<img>` could result 
+in slower LCP and 
+higher bandwidth. 
+Consider using `<Image 
+/>` from `next/image` 
+to automatically 
+optimize images. This 
+may incur additional 
+usage or cost from 
+your provider. See: htt
+ps://nextjs.org/docs/me
+ssages/no-img-element  
+@next/next/no-img-eleme
+nt
+
+./src/app/stats/page.ts
+x
+225:49  Warning: Using 
+`<img>` could result 
+in slower LCP and 
+higher bandwidth. 
+Consider using `<Image 
+/>` from `next/image` 
+to automatically 
+optimize images. This 
+may incur additional 
+usage or cost from 
+your provider. See: htt
+ps://nextjs.org/docs/me
+ssages/no-img-element  
+@next/next/no-img-eleme
+nt
+
+./src/app/terms/page.ts
+x
+51:29  Error: `"` can 
+be escaped with 
+`&quot;`, `&ldquo;`, 
+`&#34;`, `&rdquo;`.  re
+act/no-unescaped-entiti
+es
+51:37  Error: `"` can 
+be escaped with 
+`&quot;`, `&ldquo;`, 
+`&#34;`, `&rdquo;`.  re
+act/no-unescaped-entiti
+es
+51:109  Error: `"` can 
+be escaped with 
+`&quot;`, `&ldquo;`, 
+`&#34;`, `&rdquo;`.  re
+act/no-unescaped-entiti
+es
+51:115  Error: `"` can 
+be escaped with 
+`&quot;`, `&ldquo;`, 
+`&#34;`, `&rdquo;`.  re
+act/no-unescaped-entiti
+es
+
+./src/components/explor
+e/DiscoveryFeed.tsx
+240:21  Warning: Using 
+`<img>` could result 
+in slower LCP and 
+higher bandwidth. 
+Consider using `<Image 
+/>` from `next/image` 
+to automatically 
+optimize images. This 
+may incur additional 
+usage or cost from 
+your provider. See: htt
+ps://nextjs.org/docs/me
+ssages/no-img-element  
+@next/next/no-img-eleme
+nt
+
+./src/components/provid
+ers/WebVitals.tsx
+14:13  Error: 'body' 
+is assigned a value 
+but never used.  @types
+cript-eslint/no-unused-
+vars
+
+./src/components/radio/
+FullscreenPlayer.tsx
+89:37  Warning: Using 
+`<img>` could result 
+in slower LCP and 
+higher bandwidth. 
+Consider using `<Image 
+/>` from `next/image` 
+to automatically 
+optimize images. This 
+may incur additional 
+usage or cost from 
+your provider. See: htt
+ps://nextjs.org/docs/me
+ssages/no-img-element  
+@next/next/no-img-eleme
+nt
+
+./src/components/radio/
+NewsWidget.tsx
+15:9  Error: 
+'isAnnouncerSpeaking' 
+is assigned a value 
+but never used.  @types
+cript-eslint/no-unused-
+vars
+
+./src/components/radio/
+NowPlaying.tsx
+5:10  Error: 
+'formatTime' is 
+defined but never 
+used.  @typescript-esli
+nt/no-unused-vars
+
+./src/components/radio/
+PartyMode.tsx
+3:18  Error: 
+'AnimatePresence' is 
+defined but never 
+used.  @typescript-esli
+nt/no-unused-vars
+
+./src/components/radio/
+QueuePreview.tsx
+83:23  Warning: Using 
+`<img>` could result 
+in slower LCP and 
+higher bandwidth. 
+Consider using `<Image 
+/>` from `next/image` 
+to automatically 
+optimize images. This 
+may incur additional 
+usage or cost from 
+your provider. See: htt
+ps://nextjs.org/docs/me
+ssages/no-img-element  
+@next/next/no-img-eleme
+nt
+142:25  Warning: Using 
+`<img>` could result 
+in slower LCP and 
+higher bandwidth. 
+Consider using `<Image 
+/>` from `next/image` 
+to automatically 
+optimize images. This 
+may incur additional 
+usage or cost from 
+your provider. See: htt
+ps://nextjs.org/docs/me
+ssages/no-img-element  
+@next/next/no-img-eleme
+nt
+
+./src/components/radio/
+SleepTimer.tsx
+96:9  Error: 
+'progressPercent' is 
+assigned a value but 
+never used.  @typescrip
+t-eslint/no-unused-vars
+
+./src/components/radio/
+SongHistory.tsx
+13:31  Error: 
+'accessToken' is 
+defined but never 
+used.  @typescript-esli
+nt/no-unused-vars
+200:25  Warning: Using 
+`<img>` could result 
+in slower LCP and 
+higher bandwidth. 
+Consider using `<Image 
+/>` from `next/image` 
+to automatically 
+optimize images. This 
+may incur additional 
+usage or cost from 
+your provider. See: htt
+ps://nextjs.org/docs/me
+ssages/no-img-element  
+@next/next/no-img-eleme
+nt
+
+./src/components/radio/
+SongReactions.tsx
+3:28  Error: 
+'useEffect' is defined 
+but never used.  @types
+cript-eslint/no-unused-
+vars
+27:11  Error: 
+'genreColor' is 
+assigned a value but 
+never used.  @typescrip
+t-eslint/no-unused-vars
+
+./src/components/radio/
+StationDial.tsx
+29:9  Error: 
+'isDragging' is 
+assigned a value but 
+never used.  @typescrip
+t-eslint/no-unused-vars
+
+./src/components/radio/
+VinylRecord.tsx
+154:13  Warning: Using 
+`<img>` could result 
+in slower LCP and 
+higher bandwidth. 
+Consider using `<Image 
+/>` from `next/image` 
+to automatically 
+optimize images. This 
+may incur additional 
+usage or cost from 
+your provider. See: htt
+ps://nextjs.org/docs/me
+ssages/no-img-element  
+@next/next/no-img-eleme
+nt
+
+./src/components/radio/
+Visualizer.tsx
+92:17  Error: 'base' 
+is never reassigned. 
+Use 'const' instead.  
+prefer-const
+
+./src/components/radio/
+VisualizerStyleSelector
+.tsx
+5:10  Error: 
+'useRadioStore' is 
+defined but never 
+used.  @typescript-esli
+nt/no-unused-vars
+6:10  Error: 
+'getStationColor' is 
+defined but never 
+used.  @typescript-esli
+nt/no-unused-vars
+
+./src/components/radio/
+WhyThisSong.tsx
+6:15  Error: 
+'TrackScoreBreakdown' 
+is defined but never 
+used.  @typescript-esli
+nt/no-unused-vars
+
+./src/components/ui/Inv
+iteCard.tsx
+4:18  Error: 
+'AnimatePresence' is 
+defined but never 
+used.  @typescript-esli
+nt/no-unused-vars
+
+./src/components/ui/Set
+tingsModal.tsx
+3:10  Error: 
+'useState' is defined 
+but never used.  @types
+cript-eslint/no-unused-
+vars
+4:18  Error: 
+'AnimatePresence' is 
+defined but never 
+used.  @typescript-esli
+nt/no-unused-vars
+6:10  Error: 'THEMES' 
+is defined but never 
+used.  @typescript-esli
+nt/no-unused-vars
+
+./src/components/__test
+s__/ErrorBoundary.test.
+tsx
+1:1  Error: Do not use 
+"@ts-nocheck" because 
+it alters compilation 
+errors.  @typescript-es
+lint/ban-ts-comment
+
+./src/config/stations.t
+s
+474:14  Error: 'e' is 
+defined but never 
+used.  @typescript-esli
+nt/no-unused-vars
+
+./src/hooks/useAutoReco
+nnect.ts
+15:9  Error: 
+'isPlaying' is 
+assigned a value but 
+never used.  @typescrip
+t-eslint/no-unused-vars
+
+./src/hooks/useRadioEng
+ine.ts
+214:6  Warning: React 
+Hook useCallback has 
+missing dependencies: 
+'fetchTrackLyrics', 
+'getUserContext', and 
+'trackMoodPoint'. 
+Either include them or 
+remove the dependency 
+array.  react-hooks/exh
+austive-deps
+286:6  Warning: React 
+Hook useCallback has 
+missing dependencies: 
+'fetchTrackLyrics', 
+'getUserContext', 
+'store', and 
+'trackMoodPoint'. 
+Either include them or 
+remove the dependency 
+array.  react-hooks/exh
+austive-deps
+300:6  Warning: React 
+Hook useCallback has a 
+missing dependency: 
+'store'. Either 
+include it or remove 
+the dependency array.  
+react-hooks/exhaustive-
+deps
+371:5  Warning: React 
+Hook useCallback has 
+missing dependencies: 
+'fetchTrackLyrics', 
+'getUserContext', and 
+'trackMoodPoint'. 
+Either include them or 
+remove the dependency 
+array.  react-hooks/exh
+austive-deps
+426:6  Warning: React 
+Hook useCallback has a 
+missing dependency: 
+'getUserContext'. 
+Either include it or 
+remove the dependency 
+array.  react-hooks/exh
+austive-deps
+496:6  Warning: React 
+Hook useCallback has 
+missing dependencies: 
+'fetchTrackLyrics', 
+'getUserContext', and 
+'trackMoodPoint'. 
+Either include them or 
+remove the dependency 
+array.  react-hooks/exh
+austive-deps
+
+./src/hooks/useSpotifyP
+layer.ts
+8:14  Error: 
+Unexpected any. 
+Specify a different 
+type.  @typescript-esli
+nt/no-explicit-any
+14:28  Error: 
+Unexpected any. 
+Specify a different 
+type.  @typescript-esli
+nt/no-explicit-any
+67:58  Error: 
+Unexpected any. 
+Specify a different 
+type.  @typescript-esli
+nt/no-explicit-any
+75:44  Error: 
+Unexpected any. 
+Specify a different 
+type.  @typescript-esli
+nt/no-explicit-any
+104:64  Error: 
+Unexpected any. 
+Specify a different 
+type.  @typescript-esli
+nt/no-explicit-any
+108:64  Error: 
+Unexpected any. 
+Specify a different 
+type.  @typescript-esli
+nt/no-explicit-any
+112:57  Error: 
+Unexpected any. 
+Specify a different 
+type.  @typescript-esli
+nt/no-explicit-any
+
+./src/lib/env.ts
+12:7  Error: 
+'optionalServerVars' 
+is assigned a value 
+but never used.  @types
+cript-eslint/no-unused-
+vars
+
+./src/lib/__tests__/env
+.test.ts
+22:29  Error: A 
+`require()` style 
+import is forbidden.  @
+typescript-eslint/no-re
+quire-imports
+31:29  Error: A 
+`require()` style 
+import is forbidden.  @
+typescript-eslint/no-re
+quire-imports
+41:29  Error: A 
+`require()` style 
+import is forbidden.  @
+typescript-eslint/no-re
+quire-imports
+
+./src/lib/__tests__/val
+idations.test.ts
+6:3  Error: 
+'ttsRequestSchema' is 
+defined but never 
+used.  @typescript-esli
+nt/no-unused-vars
+
+./src/services/dj/reque
+st-parser.ts
+70:7  Error: 'request' 
+is never reassigned. 
+Use 'const' instead.  
+prefer-const
+
+./src/services/dj/sched
+uler.ts
+5:57  Error: 
+'TimeOfDay' is defined 
+but never used.  @types
+cript-eslint/no-unused-
+vars
+
+./src/services/music-se
+lector.ts
+6:71  Error: 
+'SelectionResult' is 
+defined but never 
+used.  @typescript-esli
+nt/no-unused-vars
+
+./src/services/spotify-
+api.ts
+59:17  Error: 
+Unexpected any. 
+Specify a different 
+type.  @typescript-esli
+nt/no-explicit-any
+60:14  Error: 
+Unexpected any. 
+Specify a different 
+type.  @typescript-esli
+nt/no-explicit-any
+207:36  Error: 
+Unexpected any. 
+Specify a different 
+type.  @typescript-esli
+nt/no-explicit-any
+211:32  Error: 
+Unexpected any. 
+Specify a different 
+type.  @typescript-esli
+nt/no-explicit-any
+253:23  Error: 
+Unexpected any. 
+Specify a different 
+type.  @typescript-esli
+nt/no-explicit-any
+254:20  Error: 
+Unexpected any. 
+Specify a different 
+type.  @typescript-esli
+nt/no-explicit-any
+
+./src/store/__tests__/r
+adio-store.test.ts
+97:49  Error: 
+Unexpected any. 
+Specify a different 
+type.  @typescript-esli
+nt/no-explicit-any
+106:61  Error: 
+Unexpected any. 
+Specify a different 
+type.  @typescript-esli
+nt/no-explicit-any
+
+info  - Need to 
+disable some ESLint 
+rules? Learn more 
+here: https://nextjs.or
+g/docs/basic-features/e
+slint#disabling-rules

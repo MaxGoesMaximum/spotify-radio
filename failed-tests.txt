@@ -1,0 +1,48 @@
+C:\SpotifyRadio\src\components\__tests__\Skeleton.test.tsx
+  [1m● [22mTest suite failed to run
+
+    Cannot find module '@testing-library/dom' from 'node_modules/@testing-library/react/dist/pure.js'
+
+    Require stack:
+      node_modules/@testing-library/react/dist/pure.js
+      node_modules/@testing-library/react/dist/index.js
+      src/components/__tests__/Skeleton.test.tsx
+
+    [0m [90m  7 |[39m [36mimport[39m { [33mSkeleton[39m[33m,[39m [33mSkeletonCard[39m[33m,[39m [33mSkeletonRadioPlayer[39m } [36mfrom[39m [32m"../ui/Skeleton"[39m[33m;[39m
+     [90m  8 |[39m
+    [31m[1m>[22m[39m[90m  9 |[39m describe([32m"Skeleton"[39m[33m,[39m () [33m=>[39m {
+     [90m    |[39m                 [31m[1m^[22m[39m
+     [90m 10 |[39m   it([32m"renders with default class"[39m[33m,[39m () [33m=>[39m {
+     [90m 11 |[39m     [36mconst[39m { container } [33m=[39m render([33m<[39m[33mSkeleton[39m [33m/[39m[33m>[39m)[33m;[39m
+     [90m 12 |[39m     [36mconst[39m el [33m=[39m container[33m.[39mfirstChild [36mas[39m [33mHTMLElement[39m[33m;[39m[0m
+
+      [2mat Resolver._throwModNotFoundError ([22mnode_modules/jest-resolve/build/index.js[2m:863:11)[22m
+      [2mat Object.<anonymous> ([22mnode_modules/@testing-library/react/dist/pure.js[2m:46:12)[22m
+      [2mat Object.<anonymous> ([22mnode_modules/@testing-library/react/dist/index.js[2m:7:13)[22m
+      [2mat Object.<anonymous> ([22m[0m[36msrc/components/__tests__/Skeleton.test.tsx[39m[0m[2m:9:17)[22m
+
+
+---
+
+C:\SpotifyRadio\src\components\__tests__\ErrorBoundary.test.tsx
+  [1m● [22mTest suite failed to run
+
+    Cannot find module '@testing-library/dom' from 'node_modules/@testing-library/react/dist/pure.js'
+
+    Require stack:
+      node_modules/@testing-library/react/dist/pure.js
+      node_modules/@testing-library/react/dist/index.js
+      src/components/__tests__/ErrorBoundary.test.tsx
+
+    [0m [90m  8 |[39m [36mimport[39m { [33mErrorBoundary[39m } [36mfrom[39m [32m"../ErrorBoundary"[39m[33m;[39m
+     [90m  9 |[39m
+    [31m[1m>[22m[39m[90m 10 |[39m [90m// Component that throws[39m
+     [90m    |[39m                 [31m[1m^[22m[39m
+     [90m 11 |[39m [36mfunction[39m [33mThrowingComponent[39m({ shouldThrow }[33m:[39m { shouldThrow[33m:[39m boolean }) {
+     [90m 12 |[39m   [36mif[39m (shouldThrow) [36mthrow[39m [36mnew[39m [33mError[39m([32m"Test error message"[39m)[33m;[39m
+     [90m 13 |[39m   [36mreturn[39m [33m<[39m[33mdiv[39m[33m>[39m[33mContent[39m rendered[33m<[39m[33m/[39m[33mdiv[39m[33m>[39m[33m;[39m[0m
+
+      [2mat Resolver._throwModNotFoundError ([22mnode_modules/jest-resolve/build/index.js[2m:863:11)[22m
+      [2mat Object.<anonymous> ([22mnode_modules/@testing-library/react/dist/pure.js[2m:46:12)[22m
+      [2mat Object.<anonymous> ([22mnode_modules/@testing-library/react/dist/index.js[2m:7:13)[22m
+      [2mat Object.<anonymous> ([22m[0m[36msrc/components/__tests__/ErrorBoundary.test.tsx[39m[0m[2m:10:17)[22m

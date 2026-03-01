@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
+import Image from "next/image";
 
 interface RecapStats {
   totalTracks: number;
@@ -75,7 +76,7 @@ export default function RecapPage() {
       .then((data) => {
         if (data.stats) setStats(data.stats);
       })
-      .catch(() => {})
+      .catch(() => { })
       .finally(() => setLoading(false));
   }, []);
 
@@ -248,7 +249,7 @@ export default function RecapPage() {
                 >
                   <span className="text-lg font-bold text-white/20 w-6 text-center">{idx + 1}</span>
                   {track.albumArt && (
-                    <img src={track.albumArt} alt="" className="w-10 h-10 rounded object-cover" />
+                    <Image src={track.albumArt} alt="" width={40} height={40} className="rounded object-cover" />
                   )}
                   <div className="flex-1 min-w-0">
                     <div className="text-white text-sm font-medium truncate">{track.title}</div>
